@@ -1,0 +1,9 @@
+.idea/
+.vscode/
+.circleci/
+node_modules/
+build/
+tmp/
+temp/
+dist/
+/.env
