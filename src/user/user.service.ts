@@ -82,6 +82,28 @@ export class UserService {
     });
   }
 
+  async revokeUserApiKey(userId, key) {
+    const u = await this.userApiModel.findByPk(key);
+    return await u.update({
+      deletedAt: new Date(),
+      deletedBy: userId,
+    });
+  }
+
+  async createApiKey(userId): Promise<UserApi> {
+    const newUserApi = new UserApi();
+    newUserApi.userId = userId;
+    newUserApi.createdBy = userId;
+    await newUserApi.save();
+    return newUserApi;
+  }
+
+  async getUserApiKey(userId): Promise<UserApi> {
+    return await this.userApiModel.findOne({
+      where: { userId: userId },
+    });
+  }
+
   async findApiKey(key: string): Promise<UserApi> {
     return await this.userApiModel.findOne({
       where: { id: key },

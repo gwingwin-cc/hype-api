@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { verify } from 'argon2';
 import { User } from '../entity';
@@ -67,6 +67,9 @@ export class AuthService {
 
   async validateApiKey(url, headers, payload) {
     const apiUser = await this.usersService.findApiKey(headers['hype-api_key']);
+    if (apiUser.deletedAt != null) {
+      throw new UnauthorizedException('api key is deleted');
+    }
     const signed = this.generateSignature(
       apiUser['secretKey'],
       url,
