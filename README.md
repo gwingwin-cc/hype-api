@@ -1,36 +1,46 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
-</p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+# HypeSDK API
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+HypeSDK is low-code dev/tools to develop Data application (API Base), Focus on help both Low-code and Developer in development process does not prepare for no-code and not ready to use in production also easy to custom extend and deployment.
+
+Which API Base concept this project can implement on any frontend language by follow on API response that will allow developer can custom application independently.
+
+Cause business solution not just collecting, presenting data our goal will include with make it working with (What ever make document, tutorial or API connecting) other software to match with business logic, example Jasper Report for generating PDF.
+
+FE project now on ::WIP
+
+Documentation is ::WIP!
+on [HypeSDK.com](https://docs.nestjs.com/support)
 
 ## Installation
-
+Require **NodeJS 16 LTS**
 ```bash
-$ npm install
+$ yarn
+$ cp .env.cloud .env
 ```
+
+Custom setting ENV with your local
+
+
+```
+# .env file
+DATABASE_HOST=localhost
+DATABASE_PORT=3307
+DATABASE_USERNAME=root
+DATABASE_PASSWORD=0123
+DATABASE_DB=hype_migrate
+```
+Custom config/config.json with your local
+
+this project require initial migration step **config/config.json** will use for setting DB for migrate.
+```bash
+# run migrate script
+$ yarn run migrate:dev
+$ yarn run migrate:dev:seed
+```
+
 
 ## Running the app
 
@@ -41,41 +51,48 @@ $ npm run start
 # watch mode
 $ npm run start:dev
 
-# production mode
-$ npm run start:prod
 ```
 
 ## Test
 
+Need to create unit-tests, currently we don't have it 😭
 ```bash
 # unit tests
 $ npm run test
-
-# e2e tests
-$ npm run test:e2e
 
 # test coverage
 $ npm run test:cov
 ```
 
-## Support
+## Contribute
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+This project open to Contribute which every support or just try to use our project.
+
+- Any suggestion can also join in [Discord](https://discord.gg/YjbZ5eXNdR).
+
+- For code contribute can start with folk then open PR. 
+
+### TODO
+    -   Unit-test
+    -   API Doc
+    -   Documentation ( need to discuss)
+        -   project structure
+        -   development docs
+        -   others?
+    -   Diagram
+        -   infra-structure
+        -   ER
+        -   flow
+        
+
+
 
 ## Stay in touch
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Website - [https://hypesdk.com](https://hypesdk.com/)
+- Discord - [https://discord.gg/YjbZ5eXNdR](https://discord.gg/YjbZ5eXNdR)
 
-
-## TODO
-    - Implement API Auth
-    - Update migrate script
-    - Add test
-    - Document
-    - API Document
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+HypeSDK is [BSD-3 licensed](LICENSE).
