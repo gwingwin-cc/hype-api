@@ -14,6 +14,7 @@ module.exports = {
                                 \`createdBy\` int(11) DEFAULT NULL,
                                 \`updatedBy\` int(11) DEFAULT NULL,
                                 \`deletedBy\` int(11) DEFAULT NULL,
+                                \`state\` ENUM('ACTIVE', 'DRAFT') DEFAULT 'DRAFT',
                                 \`tags\` text DEFAULT NULL,
                                 PRIMARY KEY (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
