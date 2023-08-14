@@ -12,7 +12,7 @@ Cause business solution not just collecting, presenting data our goal will inclu
 FE project now on ::WIP
 
 Documentation is ::WIP!
-on [HypeSDK.com](https://docs.nestjs.com/support)
+on [HypeSDK.com](https://hypesdk.com)
 
 ## Installation
 Require **NodeJS 16 LTS**
