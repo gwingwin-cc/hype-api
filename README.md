@@ -15,10 +15,18 @@ Documentation is ::WIP!
 on [HypeSDK.com](https://hypesdk.com)
 
 ## Installation
-Require **NodeJS 16 LTS**
+Prerequisite
+
+-  **NodeJS 16 LTS** or higher
+- [Yarn package](https://yarnpkg.com/)
+- [MariaDB](https://mariadb.org/) 10.9 or higher ([docker](https://hub.docker.com/_/mariadb))
+
+
+
 ```bash
-$ yarn
-$ cp .env.cloud .env
+# bash
+yarn
+cp .env.cloud .env
 ```
 
 Custom setting ENV with your local
@@ -36,20 +44,22 @@ Custom config/config.json with your local
 
 this project require initial migration step **config/config.json** will use for setting DB for migrate.
 ```bash
+# bash
 # run migrate script
-$ yarn run migrate:dev
-$ yarn run migrate:dev:seed
+yarn run migrate:dev
+yarn run migrate:dev:seed
 ```
 
 
 ## Running the app
 
 ```bash
+# bash
 # development
-$ yarn start
+yarn start
 
 # watch mode
-$ yarn run start:dev
+yarn run start:dev
 
 ```
 
@@ -57,11 +67,12 @@ $ yarn run start:dev
 
 Need to create unit-tests, currently we don't have it 😭
 ```bash
+# bash
 # unit tests
-$ yarn run test
+yarn run test
 
 # test coverage
-$ yarn run test:cov
+yarn run test:cov
 ```
 
 ## Contribute
