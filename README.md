@@ -12,7 +12,7 @@ Cause business solution not just collecting, presenting data our goal will inclu
 FE project now on ::WIP
 
 Documentation is ::WIP!
-on [HypeSDK.com](https://docs.nestjs.com/support)
+on [HypeSDK.com](https://hypesdk.com)
 
 ## Installation
 Require **NodeJS 16 LTS**
@@ -46,10 +46,10 @@ $ yarn run migrate:dev:seed
 
 ```bash
 # development
-$ npm run start
+$ yarn start
 
 # watch mode
-$ npm run start:dev
+$ yarn run start:dev
 
 ```
 
@@ -58,10 +58,10 @@ $ npm run start:dev
 Need to create unit-tests, currently we don't have it 😭
 ```bash
 # unit tests
-$ npm run test
+$ yarn run test
 
 # test coverage
-$ npm run test:cov
+$ yarn run test:cov
 ```
 
 ## Contribute
