@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 
 import { json } from 'body-parser';
+import { InternalModule } from './internal.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(InternalModule);
   app.use(json({ limit: '10mb' }));
   await app.listen(3030);
 }

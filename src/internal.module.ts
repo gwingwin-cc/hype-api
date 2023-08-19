@@ -7,6 +7,9 @@ import * as dotenv from 'dotenv';
 import { KnexModule } from 'nestjs-knex';
 import { Op } from 'sequelize';
 import { InternalController } from './internal.controller';
+import { ScriptModule } from './script/script.module';
+import { ApplicationModule } from './application/application.module';
+import { BlobStorageModule } from './blob-storage/blob-storage.module';
 dotenv.config();
 
 @Module({
@@ -54,6 +57,9 @@ dotenv.config();
     }),
     UserModule,
     FormModule,
+    ScriptModule,
+    ApplicationModule,
+    BlobStorageModule,
   ],
   controllers: [InternalController],
 })

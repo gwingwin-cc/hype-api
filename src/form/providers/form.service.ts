@@ -278,15 +278,14 @@ export class FormService {
     }
 
     const tableSlug = 'zz_' + form.slug;
-    Logger.log(`to table slug ${tableSlug}`, 'addField');
     // // TODO add unit test and check exist column
-    // const addColumnResult = await this.sequelize.query(
-    //   `
-    //             ALTER TABLE ${tableSlug}
-    //                 ADD COLUMN ${slug} ${allowFieldType.columnType} NULL;
-    //         `,
-    // );
-
+    await this.sequelize.query(
+      `
+                ALTER TABLE ${tableSlug}
+                    ADD COLUMN ${slug} ${allowFieldType.columnType} NULL;
+            `,
+    );
+    Logger.log(`to table slug ${tableSlug}`, 'addField');
     return await this.formFieldModel.create({
       slug: slug,
       name: name,
