@@ -4,7 +4,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
       `
-          create table hype_refactor.user_api
+          create table user_api
           (
               id         VARCHAR(255)                         not null,
               user_id    int                                  not null,
