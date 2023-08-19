@@ -1,5 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { LocalAuthGuard } from './auth/local-auth.guard';
+import { Controller, Get } from '@nestjs/common';
 import { UserService } from './user/user.service';
 import { FormRecordService } from './form/providers/form-record.service';
 import { FormService } from './form/providers/form.service';
@@ -16,7 +15,6 @@ export class InternalController {
     private readonly formService: FormService,
   ) {}
 
-  @UseGuards(LocalAuthGuard)
   @Get('internal/initial')
   async login(): Promise<void> {
     await this.formService.createForm(1, {
