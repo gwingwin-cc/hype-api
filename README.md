@@ -40,7 +40,11 @@ DATABASE_USERNAME=root
 DATABASE_PASSWORD=0123
 DATABASE_DB=hype_migrate
 ```
+
+```
+# config/config.json
 Custom config/config.json with your local
+```
 
 this project require initial migration step **config/config.json** will use for setting DB for migrate.
 ```bash
@@ -48,7 +52,12 @@ this project require initial migration step **config/config.json** will use for 
 # run migrate script
 yarn run migrate:dev
 yarn run migrate:dev:seed
+yarn run start:internal
+curl --request GET \
+  --url http://localhost:3030/internal/initial
+#exit after curl
 ```
+
 
 
 ## Running the app
@@ -60,7 +69,6 @@ yarn start
 
 # watch mode
 yarn run start:dev
-
 ```
 
 ## Test
