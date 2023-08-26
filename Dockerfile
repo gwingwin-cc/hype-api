@@ -34,7 +34,6 @@ COPY --from=builder --chown=node:node /home/node/app/dist/ ./dist/
 COPY --from=builder --chown=node:node /home/node/app/config/ ./config/
 COPY --from=builder --chown=node:node /home/node/app/migrations/ ./migrations/
 COPY --from=builder --chown=node:node /home/node/app/seeders/ ./seeders/
-COPY --from=builder --chown=node:node /home/node/app/models/ ./models/
 
 # Bind to all network interfaces so that it can be mapped to the host OS
 ENV HOST=0.0.0.0 PORT=3000
