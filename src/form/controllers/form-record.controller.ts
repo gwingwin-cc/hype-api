@@ -57,6 +57,7 @@ export class FormRecordController {
       format: string;
     },
   ) {
+    let form: HypeForm;
     if (body.includeForm) {
       form = await this.formService.getForm({
         id: formId,
