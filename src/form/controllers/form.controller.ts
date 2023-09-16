@@ -20,6 +20,8 @@ import { HypeForm, HypeFormField, HypeFormPermissions } from '../../entity';
 import { Attributes, FindOptions } from 'sequelize/types/model';
 import { TagsService } from '../providers/tags.service';
 import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeRequest } from '../../interfaces/request';
+import { Op } from 'sequelize';
 
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -78,43 +80,22 @@ export class FormController {
   @Permissions('form_management')
   @Get('')
   async getFormDatalist(
-    @Request() req,
-    @Body()
-    body: {
-      [key: string]: any;
-      format: string;
-    },
+    @Request() req: HypeRequest,
+    @Query('deleted') deleted: string,
   ) {
-    let where = { deletedAt: null };
-    if (body.where != null) {
-      where = { ...body.where };
+    const where = { deletedAt: null };
+    const filterOnlyDelete = deleted == 'true' || deleted == '1';
+    if (filterOnlyDelete) {
+      where.deletedAt = { [Op.ne]: null };
     }
-    // let include = [
-    //   HypeFormField,
-    //   {
-    //     model: User,
-    //     as: 'createdByUser',
-    //   },
-    // ];
-    // if (body.include != null) {
-    //   include = body.include;
-    // }
     const options: FindOptions<Attributes<HypeForm>> = {
       where: where,
-      // include: include,
+      paranoid: !filterOnlyDelete,
     };
-
-    if (body.attributes != null) {
-      options.attributes = body.attributes;
-    }
-
     const dataPromise = this.formModel.findAll(options);
     const [data, total] = await Promise.all([
       dataPromise,
-      this.formModel.count({
-        where,
-        // include: [...(body.include ?? [])],
-      }),
+      this.formModel.count(options),
     ]);
     return {
       data,

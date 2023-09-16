@@ -81,7 +81,7 @@ export class FormService {
    * @param id
    * @param slug
    * @param layoutState 'ACTIVE' | 'DRAFT'
-   * @param includeDeleteField
+   * @param excludeDeleteField
    */
   async getForm({
     id = null,
@@ -160,11 +160,6 @@ export class FormService {
       ],
     });
 
-    // const relations = this.sequelize.query(
-    //   `SELECT * FROM hype_form_relations hfr
-    //          WHERE formId = ${form.id} AND deletedAt IS NULL`,
-    //   { type: QueryTypes.SELECT },
-    // );
     fields$.then();
     permissions$.then();
     layouts$.then();
