@@ -4,9 +4,9 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpException,
   Logger,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -19,13 +19,11 @@ import {
 import xlsx from 'node-xlsx';
 import { InjectModel } from '@nestjs/sequelize';
 import { HypeForm, HypeFormField } from '../../entity';
-import { UserService } from '../../user/user.service';
 import { FormService } from '../providers/form.service';
 import { FormRecordService } from '../providers/form-record.service';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { Permissions } from '../../auth/permission.decorator';
 import { PermissionGuard } from '../../auth/guard/permission.guard';
-import { BlobStorageService } from '../../blob-storage/blob-storage.service';
 import { TagsService } from '../providers/tags.service';
 import {
   CreateFormRecordDto,
@@ -34,6 +32,7 @@ import {
   FormRecordDto,
 } from '../dto/form-record.dto';
 import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeRequest } from '../../interfaces/request';
 
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -41,17 +40,14 @@ export class FormRecordController {
   constructor(
     @InjectModel(HypeForm)
     private formModel: typeof HypeForm,
-    private blobService: BlobStorageService,
     private formService: FormService,
     private formRecordService: FormRecordService,
-    private userService: UserService,
     private tagsService: TagsService,
   ) {}
 
   @Get(':fid/records')
   async getRecordList(
-    @Request() req,
-    @Param('fid') formId,
+    @Param('fid', ParseIntPipe) formId: number,
     @Query()
     body: {
       perPage: number;
@@ -61,7 +57,6 @@ export class FormRecordController {
       format: string;
     },
   ) {
-    let form = null;
     if (body.includeForm) {
       form = await this.formService.getForm({
         id: formId,
@@ -97,9 +92,8 @@ export class FormRecordController {
 
   @Get(':fid/records/:id')
   async getRecordById(
-    @Request() req,
-    @Param('fid') formId,
-    @Param('id') id,
+    @Param('fid', ParseIntPipe) formId: number,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<FormRecordDto> {
     const form = await this.formModel.findOne({
       where: {
@@ -121,9 +115,13 @@ export class FormRecordController {
   // TODO REPLACEMENT
   @Get('script-records')
   async getRecordListByScript(
-    @Request() req,
     @Body()
-    body: { perPage: number; page: number; [key: string]: any; format: string },
+    body: {
+      perPage: number;
+      page: number;
+      [key: string]: any;
+      format: string;
+    },
   ) {
     return this.formRecordService.getRecordListByScript(body);
   }
@@ -139,7 +137,11 @@ export class FormRecordController {
   }
 
   @Delete(':fid/records/:id')
-  async DeleteRecord(@Request() req, @Param('fid') formId, @Param('id') id) {
+  async DeleteRecord(
+    @Request() req: HypeRequest,
+    @Param('fid') formId,
+    @Param('id') id,
+  ) {
     const user = req.user;
     Logger.log(formId, 'Delete Record');
     await this.formRecordService.deleteRecord(user, formId, id);
@@ -148,7 +150,7 @@ export class FormRecordController {
   @Patch(':fid/records/:id')
   @HttpCode(204)
   async updateRecord(
-    @Request() req,
+    @Request() req: HypeRequest,
     @Param('fid') formId,
     @Param('id') recordId,
     @Body()
@@ -169,35 +171,32 @@ export class FormRecordController {
 
   @Post(':fid/records')
   async createRecord(
-    @Request() req,
-    @Param('fid') formId,
+    @Request() req: HypeRequest,
+    @Param('fid', ParseIntPipe) formId: number,
     @Body() body: CreateFormRecordDto,
   ) {
     const user = req.user;
     await this.formRecordService.checkPermission(user.id, formId);
-    try {
-      return {
-        id: await this.formRecordService.createRecord(
-          req.user,
-          formId,
-          body.data,
-          body.recordState,
-          body.recordType,
-        ),
-      };
-    } catch (e) {
-      throw new HttpException(e.message, 500);
-    }
+    return {
+      id: await this.formRecordService.createRecord(
+        req.user,
+        formId,
+        body.data,
+        body.recordState,
+        body.recordType,
+      ),
+    };
   }
 
   @Post('import-data')
   @Permissions('form_management')
   @UseInterceptors(FileInterceptor('file'))
   async importData(
-    @Request() req,
+    @Request() req: HypeRequest,
     @Body() body: any,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    req.headers['content-type'] = 'multipart/form-data';
     const workSheetsFromBuffer: Array<{ data: Array<any> }> = xlsx.parse(
       file.buffer,
     );
@@ -238,7 +237,7 @@ export class FormRecordController {
   @Post('upload')
   @UseInterceptors(AnyFilesInterceptor())
   async uploadBlob(
-    @Request() req,
+    @Request() req: HypeRequest,
     @Body() body: any,
     @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
