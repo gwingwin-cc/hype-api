@@ -92,6 +92,11 @@ export class AuthService {
   }
 
   validateJwt(token: string) {
-    this.jwtService.verify(token);
+    try {
+      this.jwtService.verify(token);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

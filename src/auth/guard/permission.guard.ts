@@ -12,7 +12,10 @@ import { Sequelize } from 'sequelize-typescript';
 
 @Injectable()
 export class PermissionGuard extends JwtAuthGuard implements CanActivate {
-  constructor(private reflector: Reflector, private sequelize: Sequelize) {
+  constructor(
+    private reflector: Reflector,
+    private sequelize: Sequelize,
+  ) {
     super(reflector);
   }
 
