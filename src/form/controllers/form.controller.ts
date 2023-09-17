@@ -6,6 +6,7 @@ import {
   HttpException,
   Logger,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -22,6 +23,7 @@ import { TagsService } from '../providers/tags.service';
 import { HypeAuthGuard } from '../../hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
 import { Op } from 'sequelize';
+import { UpdaterFormPermissionDto } from '../dto/form.dto';
 
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -61,14 +63,12 @@ export class FormController {
 
   @Get(':id')
   async getForm(
-    @Request() req,
-    @Param('id') id,
+    @Param('id', ParseIntPipe) id: number,
     @Query() query: { layout_state: string },
   ) {
-    const intId = parseInt(id);
     try {
       return await this.formService.getForm({
-        id: intId,
+        id: id,
         slug: null,
         layoutState: query.layout_state ? query.layout_state : 'ACTIVE',
       });
@@ -107,8 +107,8 @@ export class FormController {
   @Patch(':id/permissions')
   async updatePermission(
     @Request() req,
-    @Param('id') formId,
-    @Body() body: { permissions: Array<any> },
+    @Param('id', ParseIntPipe) formId: number,
+    @Body() body: UpdaterFormPermissionDto,
   ) {
     const forAdd = [];
     const forRemove = [];
@@ -118,11 +118,13 @@ export class FormController {
         deletedAt: null,
       },
     });
+    Logger.log('updatePermission', body);
     const permissionToApply = body.permissions;
     for (const pa of permissionToApply.filter((p) => p.val === true)) {
       if (existPermission.find((rp) => rp.permissionId == pa.id) == null) {
         forAdd.push({
           permissionId: pa.id,
+          grant: pa.grant,
           formId: formId,
           createdBy: req.user.id,
         });

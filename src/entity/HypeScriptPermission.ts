@@ -11,14 +11,15 @@ import {
 import { User } from './User';
 import { HypePermission } from './HypeRole';
 import { HypeForm } from './HypeForm';
+import { HypeScript } from './HypeScript';
 
 @Table({
   timestamps: true,
   paranoid: true,
   updatedAt: false,
-  tableName: 'hype_form_permissions',
+  tableName: 'hype_script_permissions',
 })
-export class HypeFormPermissions extends Model {
+export class HypeScriptPermissions extends Model {
   @Column({
     type: DataType.INTEGER,
     autoIncrement: true,
@@ -26,18 +27,12 @@ export class HypeFormPermissions extends Model {
   })
   id: number;
 
-  @ForeignKey(() => HypeForm)
+  @ForeignKey(() => HypeScript)
   @Column
-  formId: number;
+  scriptId: number;
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  grant: 'READ_ONLY' | 'EDITOR' | string;
-
-  @BelongsTo(() => HypeForm, 'formId')
-  baseForm: HypeForm;
+  @BelongsTo(() => HypeScript, 'scriptId')
+  script: HypeForm;
 
   @ForeignKey(() => HypePermission)
   @Column

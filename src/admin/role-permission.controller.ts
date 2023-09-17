@@ -16,6 +16,7 @@ import { HypePermission, HypeRole } from '../entity';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { Permissions } from '../auth/permission.decorator';
 import { InjectModel } from '@nestjs/sequelize';
+import { HypeRequest } from '../interfaces/request';
 
 @Controller('admin')
 export class RolePermissionController {
@@ -136,7 +137,7 @@ export class RolePermissionController {
   @Delete('permissions/:id')
   async deletePermission(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: HypeRequest,
   ): Promise<any> {
     return this.adminService.deletePermission(req.user, {
       id: parseInt(id),

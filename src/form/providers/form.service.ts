@@ -122,7 +122,7 @@ export class FormService {
     );
 
     const permissions$ = this.sequelize.query(
-      `SELECT hp.* FROM hype_permissions hp
+      `SELECT hp.*, hfp.grant FROM hype_permissions hp
     INNER JOIN hype_form_permissions hfp ON hfp.permissionId = hp.id AND hfp.deletedAt IS NULL
     WHERE hfp.formId = ${form.id} AND hp.deletedAt IS NULL
     `,
@@ -160,9 +160,6 @@ export class FormService {
       ],
     });
 
-    fields$.then();
-    permissions$.then();
-    layouts$.then();
     const resultArr = await Promise.all([
       fields$,
       relations,
@@ -174,25 +171,6 @@ export class FormService {
     form['permissions'] = resultArr[2];
     form['layouts'] = resultArr[3];
     return form;
-    // return this.formModel.findOne({
-    //   where: {
-    //     ...optExtra,
-    //     deletedAt: null,
-    //     state: 'ACTIVE',
-    //   },
-    //   include: [
-    //     HypeFormPermissions,
-    //     {
-    //       model: HypeFormField,
-    //       include: [{ model: HypeFormRelation }],
-    //     },
-    //     HypeFormRelation,
-    //     {
-    //       model: HypeFormLayout,
-    //       where: { state: state },
-    //     },
-    //   ],
-    // });
   }
 
   async addRelation(requestUser: User, formId, targetFormId, slug, connect) {

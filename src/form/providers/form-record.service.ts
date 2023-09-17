@@ -139,7 +139,7 @@ export class FormRecordService {
     if (hasPermission.length > 0) {
       return true;
     }
-    throw new ForbiddenException();
+    throw new ForbiddenException('no permission add access form');
   }
 
   async createRecord(

@@ -1,5 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { HypeScript } from '../entity';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { HypeScript, User } from '../entity';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
@@ -12,25 +17,83 @@ export class ScriptService {
     private sequelize: Sequelize,
   ) {}
 
-  async getScript({ id = null, slug = null }) {
-    const optExtra: { id?; slug? } = {};
+  async getScript({
+    id = null,
+    slug = null,
+  }): Promise<Partial<HypeScript> & { permissions: any[] }> {
+    const optExtra: { id?: number; slug?: string } = {};
     if (id != null) {
       optExtra.id = id;
     } else {
       optExtra.slug = slug;
     }
 
-    return this.scriptModel.findOne({
+    const script$ = this.scriptModel.findOne({
       where: {
         ...optExtra,
         deletedAt: null,
       },
     });
+    const permissions$ = this.sequelize.query(
+      `SELECT hp.* FROM hype_permissions hp
+    INNER JOIN hype_script_permissions hsp ON hsp.permissionId = hp.id AND hsp.deletedAt IS NULL
+    WHERE hsp.scriptId = ${id} AND hp.deletedAt IS NULL
+    `,
+      { type: QueryTypes.SELECT },
+    );
+
+    const resultArr = await Promise.all([script$, permissions$]);
+    const result: Partial<HypeScript> & { permissions: Array<any> } = {
+      ...resultArr[0].toJSON(),
+      permissions: resultArr[1],
+    };
+    return result;
+  }
+
+  async checkPermission(userId: number, scriptId: number) {
+    const tempRequiredPermissions = ['administrator', 'script_management'];
+    const hasAdminPermission = await this.sequelize.query(
+      `SELECT ur.userId, ps.slug
+             FROM hype_permissions ps
+                      INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                      INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+             WHERE slug IN (:requiredPermissions)
+               AND userId = ${userId}
+            `,
+      {
+        replacements: { requiredPermissions: tempRequiredPermissions },
+        type: QueryTypes.SELECT,
+      },
+    );
+    if (hasAdminPermission.length > 0) {
+      return true;
+    }
+
+    const hasPermission = await this.sequelize.query(
+      `
+                SELECT ur.userId, ps.slug
+                FROM hype_permissions ps
+                         INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id AND rp.deletedAt IS null
+                         INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId AND ur.deletedAt IS NULL
+                         INNER JOIN hype_script_permissions sp
+                                    ON sp.permissionId = sp.permissionId sp fp.deletedAt IS NULL
+                WHERE sp.scriptId = ${scriptId}
+                  AND userId
+                    = ${userId}
+            `,
+      {
+        type: QueryTypes.SELECT,
+      },
+    );
+    if (hasPermission.length > 0) {
+      return true;
+    }
+    throw new ForbiddenException('no permission to access script');
   }
 
   async execScriptSQLSlug(
-    scriptSlug,
-    params,
+    scriptSlug: string,
+    params: object,
   ): Promise<{
     data: Array<any>;
     fields: any;
@@ -153,14 +216,22 @@ export class ScriptService {
     return res;
   }
 
-  async createScript(byUser, body: { slug; name; script; scriptType; state }) {
+  async createScript(
+    byUser,
+    body: {
+      slug: string;
+      name: string;
+      script: string;
+      scriptType: string;
+      state: 'ACTIVE' | 'DRAFT';
+    },
+  ) {
     if (body.slug == null) {
       throw new Error('createScript require createScript(slug) ');
     }
     const existScript = await this.scriptModel.findOne({
       where: {
         slug: body.slug,
-        state: body.state,
       },
     });
 
@@ -171,13 +242,13 @@ export class ScriptService {
         slug: body.slug,
         script: body.script,
         createdBy: byUser.id,
-        state: body.state,
+        state: 'DRAFT',
       });
     }
     throw new Error('createScript slug is exist');
   }
 
-  async deleteScript(byUser, id: number) {
+  async deleteScript(byUser: User, id: number) {
     return this.scriptModel.update(
       {
         deletedBy: byUser.id,
@@ -191,7 +262,7 @@ export class ScriptService {
     );
   }
 
-  async updateScript(byUser: any, id: any, data: any) {
+  async updateScript(byUser: User, id: any, data: any) {
     if (id == null) {
       throw new Error('update require id');
     }
@@ -219,9 +290,9 @@ export class ScriptService {
     });
   }
 
-  async publishScript(byUser: any, id: any) {
+  async publishScript(byUser: User, id: any) {
     if (id == null) {
-      throw new Error('update require id');
+      throw new BadRequestException('update require id');
     }
 
     const draftScript = await this.scriptModel.findOne({
