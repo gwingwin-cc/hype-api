@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Request,
   UploadedFile,
   UploadedFiles,
@@ -31,11 +33,11 @@ import {
   FORM_RECORD_TYPE,
   FormRecordDto,
 } from '../dto/form-record.dto';
-import { HypeAuthGuard } from '../../hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
+import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
 
 @Controller('forms')
-@UseGuards(HypeAuthGuard, PermissionGuard)
 export class FormRecordController {
   constructor(
     @InjectModel(HypeForm)
@@ -45,8 +47,10 @@ export class FormRecordController {
     private tagsService: TagsService,
   ) {}
 
+  @UseGuards(HypeAnonymousAuthGuard)
   @Get(':fid/records')
   async getRecordList(
+    @Req() req: HypeRequest,
     @Param('fid', ParseIntPipe) formId: number,
     @Query()
     body: {
@@ -57,6 +61,16 @@ export class FormRecordController {
       format: string;
     },
   ) {
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      null,
+      req.user,
+      'read',
+    );
+    if (!granted) {
+      throw new BadRequestException('You do not have permission to access.');
+    }
+
     let form: HypeForm;
     if (body.includeForm) {
       form = await this.formService.getForm({
@@ -91,11 +105,22 @@ export class FormRecordController {
     };
   }
 
+  @UseGuards(HypeAnonymousAuthGuard)
   @Get(':fid/records/:id')
   async getRecordById(
+    @Req() req,
     @Param('fid', ParseIntPipe) formId: number,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FormRecordDto> {
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      id,
+      req.user,
+      'read',
+    );
+    if (!granted) {
+      throw new BadRequestException('You do not have permission to access.');
+    }
     const form = await this.formModel.findOne({
       where: {
         id: formId,
@@ -103,7 +128,7 @@ export class FormRecordController {
       include: [HypeFormField],
     });
     if (form == null) {
-      throw new Error('Form not found.');
+      throw new BadRequestException('Form not found.');
     }
     const where = {};
     where[`zz_${form.slug}.deletedAt`] = null;
@@ -112,54 +137,51 @@ export class FormRecordController {
       ...data,
     };
   }
-
-  // TODO REPLACEMENT
-  @Get('script-records')
-  async getRecordListByScript(
-    @Body()
-    body: {
-      perPage: number;
-      page: number;
-      [key: string]: any;
-      format: string;
-    },
-  ) {
-    return this.formRecordService.getRecordListByScript(body);
-  }
-
-  // TODO REPLACEMENT
-  @Post('excel-script-datalist')
-  async exportExcelScriptDatalist(
-    @Request() req,
-    @Body()
-    body: { [key: string]: any },
-  ) {
-    return this.formRecordService.exportExcelRecordListByScript(body);
-  }
-
+  @UseGuards(HypeAnonymousAuthGuard)
   @Delete(':fid/records/:id')
   async DeleteRecord(
     @Request() req: HypeRequest,
-    @Param('fid') formId,
-    @Param('id') id,
+    @Param('fid') formId: number,
+    @Param('id') id: number,
   ) {
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      id,
+      req.user,
+      'delete',
+    );
+    if (!granted) {
+      throw new BadRequestException('You do not have permission to access.');
+    }
     const user = req.user;
     Logger.log(formId, 'Delete Record');
     await this.formRecordService.deleteRecord(user, formId, id);
   }
 
+  @UseGuards(HypeAnonymousAuthGuard)
   @Patch(':fid/records/:id')
   @HttpCode(204)
   async updateRecord(
     @Request() req: HypeRequest,
-    @Param('fid') formId,
-    @Param('id') recordId,
+    @Param('fid', ParseIntPipe) formId: number,
+    @Param('id', ParseIntPipe) recordId: number,
     @Body()
     body: {
       data: any;
       recordState: string;
     },
   ): Promise<void> {
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      recordId,
+      req.user,
+      'update',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to updateRecord.',
+      );
+    }
     const user = req.user;
     await this.formRecordService.updateRecord(
       user,
@@ -170,14 +192,24 @@ export class FormRecordController {
     );
   }
 
+  @UseGuards(HypeAnonymousAuthGuard)
   @Post(':fid/records')
   async createRecord(
     @Request() req: HypeRequest,
     @Param('fid', ParseIntPipe) formId: number,
     @Body() body: CreateFormRecordDto,
   ) {
-    const user = req.user;
-    await this.formRecordService.checkPermission(user.id, formId);
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      null,
+      req.user,
+      'create',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to createRecord.',
+      );
+    }
     return {
       id: await this.formRecordService.createRecord(
         req.user,
@@ -190,6 +222,7 @@ export class FormRecordController {
   }
 
   @Post('import-data')
+  @UseGuards(HypeAuthGuard, PermissionGuard)
   @Permissions('form_management')
   @UseInterceptors(FileInterceptor('file'))
   async importData(

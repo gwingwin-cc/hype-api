@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AllowColumnTypes } from '../interfaces/constant';
 import { InjectModel } from '@nestjs/sequelize';
 import {
@@ -7,6 +7,8 @@ import {
   HypeFormLayout,
   HypeFormPermissions,
   HypeFormRelation,
+  HypePermission,
+  PermissionGrantType,
   User,
 } from '../../entity';
 import { Sequelize } from 'sequelize-typescript';
@@ -111,7 +113,7 @@ export class FormService {
     });
     const form = formArr[0];
     if (form == null) {
-      throw new Error('Form ID or Slug not exist.');
+      throw new BadRequestException('Form ID or Slug not exist.');
     }
 
     const layouts$ = this.sequelize.query(
@@ -410,39 +412,56 @@ export class FormService {
     );
   }
 
-  // async addMappingRelation(requestUser: User, formId, compId, targetFormId) {
-  //   const targetForm = await this.prismaService.herpForm.findUnique({
-  //     where: {
-  //       id: targetFormId,
-  //     },
-  //   });
-  //
-  //   const baseForm = await this.prismaService.herpForm.findUnique({
-  //     where: {
-  //       id: formId,
-  //     },
-  //   });
-  //
-  //   const component = await this.addComponent(
-  //     requestUser,
-  //     baseForm.id,
-  //     'INT',
-  //     'mapping_relation',
-  //     targetForm.slug + '_id',
-  //     'Relation with ' + targetForm.name,
-  //   );
-  //
-  //   const relation = await this.prismaService.herpFormRelation.create({
-  //     data: {
-  //       formId: baseForm.id,
-  //       targetFormId: targetForm.id,
-  //       referenceComponentId: component.id,
-  //       createdBy: requestUser.id,
-  //     },
-  //   });
-  //
-  //   return {
-  //     relation,
-  //   };
-  // }
+  async validatePermission(
+    formId: number,
+    user: undefined | User,
+    permissionGrantType?: PermissionGrantType,
+  ): Promise<boolean> {
+    const form = await this.formModel.findByPk(formId, {
+      include: [{ model: HypeFormPermissions, include: [HypePermission] }],
+    });
+    if (user == null) {
+      form.permissions = form.permissions.filter(
+        (p) => p.permission.slug === 'public_user',
+      );
+      if (permissionGrantType != null) {
+        form.permissions = form.permissions.filter(
+          (p) => p.grant === permissionGrantType,
+        );
+      }
+      return form.permissions.length > 0;
+    }
+
+    if (user) {
+      const tempRequiredPermissions = [
+        ...form.permissions.map((p) => p.permission.slug),
+      ];
+      tempRequiredPermissions.push(`administrator`);
+      const hasPermission = await this.sequelize.modelManager.sequelize.query(
+        `SELECT ur.userId, ps.slug
+           FROM hype_permissions ps
+                  INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                  INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+           WHERE slug IN (:requiredPermissions)
+             AND userId = :userId
+          `,
+        {
+          replacements: {
+            requiredPermissions: tempRequiredPermissions,
+            userId: user.id,
+          },
+          type: QueryTypes.SELECT,
+        },
+      );
+      if (permissionGrantType != null) {
+        form.permissions = form.permissions.filter(
+          (p) => p.grant === permissionGrantType,
+        );
+      }
+      if (hasPermission.length > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
