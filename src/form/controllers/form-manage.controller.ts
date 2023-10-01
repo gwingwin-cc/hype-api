@@ -105,7 +105,11 @@ export class FormManageController {
     Logger.log('updatePermission', body);
     const permissionToApply = body.permissions;
     for (const pa of permissionToApply.filter((p) => p.val === true)) {
-      if (existPermission.find((rp) => rp.permissionId == pa.id) == null) {
+      if (
+        existPermission.find(
+          (rp) => rp.permissionId == pa.id && rp.grant == pa.grant,
+        ) == null
+      ) {
         forAdd.push({
           permissionId: pa.id,
           grant: pa.grant,
@@ -116,8 +120,11 @@ export class FormManageController {
     }
 
     for (const pa of permissionToApply.filter((p) => p.val === false)) {
-      if (existPermission.find((rp) => rp.permissionId == pa.id) != null) {
-        forRemove.push(pa.id);
+      const existFormPermission = existPermission.find(
+        (rp) => rp.permissionId == pa.id && rp.grant == pa.grant,
+      );
+      if (existFormPermission != null) {
+        forRemove.push(existFormPermission.id);
       }
     }
 
@@ -128,8 +135,7 @@ export class FormManageController {
       },
       {
         where: {
-          permissionId: forRemove,
-          formId: formId,
+          id: forRemove,
         },
       },
     );
