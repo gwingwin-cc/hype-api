@@ -691,6 +691,9 @@ export class FormRecordService {
           type: QueryTypes.SELECT,
         },
       );
+      if (hasPermission.find((hp) => hp.slug == 'administrator') != null) {
+        return true;
+      }
       form.permissions = form.permissions.filter(
         (p) => hasPermission.find((hp) => hp.slug == p.permission.slug) != null,
       );
