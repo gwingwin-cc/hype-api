@@ -133,6 +133,9 @@ export class FormRecordController {
     const where = {};
     where[`zz_${form.slug}.deletedAt`] = null;
     const data = await this.formRecordService.findOneById(form.slug, id);
+    if (data == null) {
+      throw new BadRequestException('Record not found.');
+    }
     return {
       ...data,
     };
