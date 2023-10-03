@@ -98,6 +98,14 @@ export class UserService {
     return newUserApi;
   }
 
+  async getUserByApiKey(id: string): Promise<User> {
+    const apiEntity = await this.userApiModel.findOne({
+      where: { id: id },
+      include: [User],
+    });
+    return apiEntity.user;
+  }
+
   async getUserApiKey(userId): Promise<UserApi> {
     return await this.userApiModel.findOne({
       where: { userId: userId },

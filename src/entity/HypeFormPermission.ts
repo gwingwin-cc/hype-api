@@ -30,6 +30,12 @@ export class HypeFormPermissions extends Model {
   @Column
   formId: number;
 
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  grant: PermissionGrantType;
+
   @BelongsTo(() => HypeForm, 'formId')
   baseForm: HypeForm;
 
@@ -52,4 +58,25 @@ export class HypeFormPermissions extends Model {
 
   @Column
   deletedBy: number;
+}
+
+export type PermissionGrantType =
+  | 'ACCESS_FORM'
+  | 'CREATE'
+  | 'READ_EDIT'
+  | 'READ_EDIT_DELETE'
+  | 'READ_ONLY_ALL'
+  | 'READ_EDIT_ALL'
+  | 'READ_EDIT_DELETE_ALL'
+  | 'CUSTOM';
+
+export enum PermissionGrantTypeEnum {
+  ACCESS_FORM = 'ACCESS_FORM',
+  CREATE = 'CREATE',
+  READ_EDIT = 'READ_EDIT',
+  READ_EDIT_DELETE = 'READ_EDIT_DELETE',
+  READ_ONLY_ALL = 'READ_ONLY_ALL',
+  READ_EDIT_ALL = 'READ_EDIT_ALL',
+  READ_EDIT_DELETE_ALL = 'READ_EDIT_DELETE_ALL',
+  CUSTOM = 'CUSTOM',
 }

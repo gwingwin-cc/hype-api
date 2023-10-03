@@ -10,4 +10,5 @@ export * from './HypeForm';
 export * from './HypeFormRelation';
 export * from './HypeFormField';
 export * from './HypeFormPermission';
+export * from './HypeScriptPermission';
 export * from './Tags';

@@ -15,6 +15,8 @@ import {
   HypeFormLayout,
   HypeFormPermissions,
   HypeFormRelation,
+  HypePermission,
+  PermissionGrantTypeEnum,
   User,
 } from '../../entity';
 import { QueryTypes } from 'sequelize';
@@ -26,6 +28,7 @@ import { FormService } from './form.service';
 import { BlobStorageService } from '../../blob-storage/blob-storage.service';
 import { InjectConnection } from 'nestjs-knex';
 import { FORM_RECORD_STATE, FORM_RECORD_TYPE } from '../dto/form-record.dto';
+import { HypeBaseForm } from '../../entity/HypeBaseForm';
 
 @Injectable()
 export class FormRecordService {
@@ -47,7 +50,7 @@ export class FormRecordService {
     @InjectConnection() private readonly knex: Knex,
   ) {}
 
-  async findOneById(slug, fid): Promise<any> {
+  async findOneById(slug, fid): Promise<HypeBaseForm> {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     const sql = knexBuilder(tableSlug).where('id', '=', fid).toString();
@@ -55,7 +58,7 @@ export class FormRecordService {
     const rows = await this.sequelize.query(sql, {
       type: QueryTypes.SELECT,
     });
-    return rows[0];
+    return rows[0] as HypeBaseForm;
   }
 
   sandboxFunction = {
@@ -101,6 +104,9 @@ export class FormRecordService {
     },
   };
 
+  /*
+  @deprecated
+   */
   async checkPermission(userId, formId) {
     const tempRequiredPermissions = ['administrator', 'form_management'];
     const hasAdminPermission = await this.sequelize.query(
@@ -139,7 +145,7 @@ export class FormRecordService {
     if (hasPermission.length > 0) {
       return true;
     }
-    throw new ForbiddenException();
+    throw new ForbiddenException('no permission add access form');
   }
 
   async createRecord(
@@ -205,8 +211,8 @@ export class FormRecordService {
         recordType: recordType,
         createdAt: knexBuilder.fn.now(),
         updatedAt: knexBuilder.fn.now(),
-        createdBy: byUser.id,
-        updatedBy: byUser.id,
+        createdBy: byUser?.id ?? null,
+        updatedBy: byUser?.id ?? null,
         ...data,
       })
       .toString();
@@ -265,7 +271,7 @@ export class FormRecordService {
     recordState,
   ) {
     delete data.approval;
-    await this.checkPermission(user.id, formId);
+    // await this.checkPermission(user.id, formId);
     let checkedRecordState: 'DRAFT' | 'ACTIVE' | 'ACTIVE_LOCK' = 'DRAFT';
     switch (recordState) {
       case '':
@@ -376,7 +382,7 @@ export class FormRecordService {
         ...data,
         recordState: checkedRecordState,
         updatedAt: knexBuilder.fn.now(),
-        updatedBy: user.id,
+        updatedBy: user?.id ?? null,
       })
       .toString();
     Logger.log(`sql ${sql}`, 'sql');
@@ -644,5 +650,108 @@ export class FormRecordService {
     await this.sequelize.query(sql, {
       type: QueryTypes.UPDATE,
     });
+  }
+
+  async validatePermissionGranted(
+    formId: number,
+    recordId: number | null,
+    user: undefined | User,
+    action: 'create' | 'update' | 'delete' | 'read',
+  ): Promise<boolean> {
+    const form = await this.formModel.findByPk(formId, {
+      include: [{ model: HypeFormPermissions, include: [HypePermission] }],
+    });
+    const matchGrants = [];
+    if (user == null) {
+      form.permissions = form.permissions.filter(
+        (p) => p.permission.slug === 'public_user',
+      );
+    }
+
+    if (user) {
+      const tempRequiredPermissions = [
+        ...form.permissions.map((p) => p.permission.slug),
+      ];
+      tempRequiredPermissions.push(`administrator`);
+      const hasPermission = await this.sequelize.modelManager.sequelize.query<{
+        slug: string;
+      }>(
+        `SELECT ps.slug
+           FROM hype_permissions ps
+                  INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                  INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+           WHERE slug IN (:requiredPermissions)
+             AND userId = :userId
+          `,
+        {
+          replacements: {
+            requiredPermissions: tempRequiredPermissions,
+            userId: user.id,
+          },
+          type: QueryTypes.SELECT,
+        },
+      );
+      if (hasPermission.find((hp) => hp.slug == 'administrator') != null) {
+        return true;
+      }
+      form.permissions = form.permissions.filter(
+        (p) => hasPermission.find((hp) => hp.slug == p.permission.slug) != null,
+      );
+    }
+
+    if (action == 'read') {
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.READ_ONLY_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL,
+        ],
+      );
+      if (recordId != null && user != null) {
+        const record = await this.findOneById(form.slug, recordId);
+        if (record.createdBy == user.id) {
+          matchGrants.push(PermissionGrantTypeEnum.READ_EDIT);
+          matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+        }
+      }
+    }
+
+    if (action == 'update') {
+      // find recordId
+      const record = await this.findOneById(form.slug, recordId);
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL,
+        ],
+      );
+      if (record.createdBy == user?.id) {
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT);
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+      }
+    }
+    if (action == 'delete') {
+      // find recordId
+      const record = await this.findOneById(form.slug, recordId);
+      matchGrants.push(...[PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL]);
+      if (record.createdBy == user.id) {
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+      }
+    }
+    if (action == 'create') {
+      // find recordId
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.CREATE,
+          PermissionGrantTypeEnum.READ_EDIT,
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+        ],
+      );
+    }
+
+    const permissionGranted = form.permissions.filter(
+      (p) => matchGrants.indexOf(p.grant) > -1,
+    );
+    return permissionGranted.length > 0;
   }
 }

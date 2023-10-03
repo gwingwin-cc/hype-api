@@ -9,7 +9,7 @@ import {
   HypeFormRelation,
   Tags,
 } from '../entity';
-import { FormController } from './controllers/form.controller';
+import { FormManageController } from './controllers/form-manage.controller';
 import { HypeBaseForm } from '../entity/HypeBaseForm';
 import { ScriptModule } from '../script/script.module';
 import { BlobStorageModule } from '../blob-storage/blob-storage.module';
@@ -20,6 +20,7 @@ import { TagsService } from './providers/tags.service';
 import { FormService } from './providers/form.service';
 import { FormLayoutController } from './controllers/form-layout.controller';
 import { AuthModule } from '../auth/auth.module';
+import { FormController } from './controllers/form.controller';
 
 @Module({
   imports: [
@@ -39,6 +40,11 @@ import { AuthModule } from '../auth/auth.module';
   ],
   providers: [FormService, TagsService, FormRecordService],
   exports: [FormRecordService, FormService, TagsService],
-  controllers: [FormController, FormRecordController, FormLayoutController],
+  controllers: [
+    FormController,
+    FormManageController,
+    FormRecordController,
+    FormLayoutController,
+  ],
 })
 export class FormModule {}
