@@ -35,7 +35,7 @@ export class UserService {
     skip?: number;
     take?: number;
     where?: any;
-  }): Promise<any[]> {
+  }): Promise<User[]> {
     const { skip, take, where } = params;
     return this.userModel.findAll({
       where: {

@@ -1,14 +1,17 @@
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
   HttpException,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Request,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { AdminService } from './admin.service';
@@ -17,8 +20,18 @@ import { HypePermission, HypeRole, User } from '../entity';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { Permissions } from '../auth/permission.decorator';
 import { InjectModel } from '@nestjs/sequelize';
+import {
+  AdminAssignUserRoleRequest,
+  AdminChangePasswordRequest,
+  AdminCreatePermissionRequest,
+  AdminCreateRoleRequest,
+  AdminCreateUserRequest,
+  AdminUpdateUserRequest,
+  UserResponseModel,
+} from './admin.dto';
+import { HypeRequest } from '../interfaces/request';
 
-// @UseGuards(JwtAuthGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('admin')
 export class AdminController {
   constructor(
@@ -33,7 +46,10 @@ export class AdminController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Post('user/datalist')
-  async getUsers(): Promise<any> {
+  async getUsers(): Promise<{
+    data: Array<UserResponseModel>;
+    total: number;
+  }> {
     const where = {
       deletedAt: null,
     };
@@ -51,7 +67,9 @@ export class AdminController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Post('user/:uid/password')
-  async changePassword(@Request() req, @Body() body: any): Promise<any> {
+  async changePassword(
+    @Body() body: AdminChangePasswordRequest,
+  ): Promise<UserResponseModel> {
     const format = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
     const isUpperCase = (string) => /[A-Z]/.test(string);
     if (
@@ -71,32 +89,19 @@ export class AdminController {
     }
     throw new HttpException(
       'Minimum 8 characters long, uppercase & symbol',
-      403,
+      400,
     );
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Patch('user/:uid/account')
-  async updateUser(@Request() req, @Body() body: any): Promise<any> {
-    const updateData = {};
-    if (body.status != null) {
-      updateData['status'] = body.status;
-    }
-
-    if (body.username != null) {
-      updateData['username'] = body.username;
-    }
-
-    if (body.email != null) {
-      updateData['email'] = body.email;
-    }
-
+  async updateUser(@Body() body: AdminUpdateUserRequest) {
     return this.userService.updateUser({
       where: {
         id: body.id,
       },
-      data: updateData,
+      data: body,
     });
   }
 
@@ -110,7 +115,10 @@ export class AdminController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Post('users')
-  async createUser(@Request() req, @Body() body: any): Promise<any> {
+  async createUser(
+    @Request() req: HypeRequest,
+    @Body() body: AdminCreateUserRequest,
+  ): Promise<UserResponseModel> {
     return this.adminService.createUser(req.user, body);
   }
 
@@ -118,20 +126,19 @@ export class AdminController {
   @Permissions('user_management')
   @Patch('user-roles/:uid')
   async assignUserRole(
-    @Param('uid') uid: string,
-    @Request() req,
-    @Body() body: any,
-  ): Promise<any> {
+    @Param('uid', new ParseIntPipe()) uid: number,
+    @Request() req: HypeRequest,
+    @Body() body: AdminAssignUserRoleRequest,
+  ) {
     if (body.roles != null) {
-      const userId = parseInt(uid);
-      return this.adminService.applyUserRoles(req.user, userId, body.roles);
+      return this.adminService.applyUserRoles(req.user, uid, body.roles);
     }
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Delete('user/:uid')
-  async deleteUser(@Param('uid') uid: string): Promise<any> {
+  async deleteUser(@Param('uid') uid: string): Promise<UserResponseModel> {
     return this.userService.updateUser({
       where: { id: parseInt(uid) },
       data: { deletedAt: new Date() },
@@ -141,36 +148,14 @@ export class AdminController {
   @UseGuards(PermissionGuard)
   @Permissions('admin')
   @Post('init-project')
-  async initProject(@Request() req): Promise<any> {
+  async initProject(@Request() req: HypeRequest) {
     return this.adminService.initProject(req.user);
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Get('roles')
-  async getRoles(): Promise<any> {
-    const [data, total] = await Promise.all([
-      this.hypeRole.findAll({
-        where: {
-          deletedAt: null,
-        },
-        include: [],
-      }),
-      this.hypeRole.count({ where: { deletedAt: null } }),
-    ]);
-    return {
-      data,
-      total,
-    };
-  }
-
-  /**
-   * @deprecated
-   */
-  @UseGuards(PermissionGuard)
-  @Permissions('permission_management')
-  @Get('role/datalist')
-  async getRolesOld(): Promise<any> {
+  async getRoles(): Promise<{ data: Array<HypeRole>; total: number }> {
     const [data, total] = await Promise.all([
       this.hypeRole.findAll({
         where: {
@@ -189,14 +174,14 @@ export class AdminController {
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Get('role/:id')
-  async getRole(@Param('id') id: string): Promise<HypeRole> {
+  async getRole(@Param('id') id: string) {
     return this.adminService.getRole(parseInt(id));
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Post('role')
-  async createRole(@Request() req, @Body() body: any): Promise<any> {
+  async createRole(@Body() body: AdminCreateRoleRequest) {
     return await this.adminService.creatRole({
       slug: body.slug,
       name: body.name,
@@ -205,29 +190,10 @@ export class AdminController {
     });
   }
 
-  // @UseGuards(PermissionGuard)
-  // @Permissions('permission_management')
-  // @Patch('role-permissions/:id')
-  // async applyPermission(
-  //   @Param('id') id: string,
-  //   @Request() req,
-  //   @Body() body: any,
-  // ): Promise<any> {
-  //   if (body.permissions != null) {
-  //     const roleId = parseInt(id);
-  //     await this.adminService.applyRolePermission(
-  //       req.user,
-  //       roleId,
-  //       body.permissions,
-  //     );
-  //     return this.adminService.getRole(roleId);
-  //   }
-  // }
-
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Delete('role/:id')
-  async deleteRole(@Param('id') id: string, @Request() req): Promise<any> {
+  async deleteRole(@Param('id') id: string, @Request() req: HypeRequest) {
     return this.adminService.deleteRole(req.user, {
       id: parseInt(id),
     });
@@ -236,13 +202,16 @@ export class AdminController {
   @Get('assign-role/:uid')
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
-  async getAssignRole(@Param('uid') id: string): Promise<any> {
+  async getAssignRole(@Param('uid') id: string) {
     return this.adminService.getAssignRole(parseInt(id));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('permission/datalist')
-  async getPermissionList(): Promise<any> {
+  async getPermissionList(): Promise<{
+    data: Array<HypePermission>;
+    total: number;
+  }> {
     const [data, total] = await Promise.all([
       this.hypePermission.findAll({
         where: {
@@ -260,53 +229,20 @@ export class AdminController {
     };
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Get('permission/:slug')
-  // async getPermission(
-  //   @Param('slug') slug: string,
-  // ): Promise<HerpPermission | null> {
-  //   return this.prismaService.herpPermission.findFirst({
-  //     where: {
-  //       slug: slug,
-  //       deletedAt: null,
-  //     },
-  //   });
-  // }
-  //
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Post('permission')
-  async createPermission(@Request() req, @Body() body: any): Promise<any> {
+  async createPermission(@Body() body: AdminCreatePermissionRequest) {
     return this.adminService.createPermission({
       name: body.name,
       slug: body.slug,
     });
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Patch('permission/:id')
-  // async updatePermission(
-  //   @Param('id') id: string,
-  //   @Request() req,
-  //   @Body() body: any,
-  // ): Promise<any> {
-  //   return this.adminService.herpPermission.update({
-  //     where: {
-  //       id: parseInt(id),
-  //     },
-  //     data: {
-  //       ...body,
-  //     },
-  //   });
-  // }
-
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Delete('permission/:id')
-  async deletePermission(
-    @Param('id') id: string,
-    @Request() req,
-  ): Promise<any> {
+  async deletePermission(@Param('id') id: string, @Request() req: HypeRequest) {
     return this.adminService.deletePermission(req.user, {
       id: parseInt(id),
     });

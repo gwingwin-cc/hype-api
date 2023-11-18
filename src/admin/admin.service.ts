@@ -7,6 +7,7 @@ import {
   RolePermissions,
   User,
   UserRoles,
+  UserStatusType,
 } from '../entity';
 import { InjectModel } from '@nestjs/sequelize';
 import { ApplicationService } from '../application/application.service';
@@ -67,9 +68,15 @@ export class AdminService {
   }
 
   async createUser(
-    byUser,
-    { password, username, email, status },
+    byUser: User,
+    payload: {
+      username: string;
+      email: string;
+      password: string;
+      status: UserStatusType;
+    },
   ): Promise<any> {
+    const { username, email, password, status } = payload;
     const hash = await this.userService.hashPassword(password);
     const appSetting = await this.formDataService.findOne('app_setting', {});
     const profileForm = await this.formService.getFormOnly({
@@ -170,7 +177,7 @@ export class AdminService {
   async applyUserRoles(
     byUser: User,
     userId: number,
-    roleToApply: { id; val }[],
+    roleToApply: { id: number; val: boolean }[],
   ) {
     const forAdd = [];
     const forRemove = [];
