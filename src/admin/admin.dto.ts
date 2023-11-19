@@ -7,12 +7,7 @@ import {
   IsString,
 } from 'class-validator';
 export type UserResponseModel = Omit<User, 'passwordHash'>;
-export class AdminCreatePermissionRequest {
-  @IsString()
-  name: string;
-  @IsString()
-  slug: string;
-}
+
 export class AdminChangePasswordRequest {
   @IsString()
   password: string;
@@ -48,18 +43,4 @@ export class AdminCreateUserRequest {
 
   @IsString()
   status: UserStatusType;
-}
-export class AdminAssignUserRoleRequest {
-  @IsArray()
-  roles: Array<{
-    id: number;
-    val: boolean;
-  }>;
-}
-
-export class AdminCreateRoleRequest {
-  @IsString()
-  name: string;
-  @IsString()
-  slug: string;
 }
