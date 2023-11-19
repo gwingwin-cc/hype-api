@@ -2,6 +2,10 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AllowColumnTypes } from '../interfaces/constant';
 import { InjectModel } from '@nestjs/sequelize';
 import {
+  FormLayoutRequireCheckModeType,
+  FormLayoutStateEnum,
+  FormStateEnum,
+  FormStateType,
   HypeForm,
   HypeFormField,
   HypeFormLayout,
@@ -28,12 +32,11 @@ export class FormService {
     private formLayoutModel: typeof HypeFormLayout,
     @InjectModel(HypeFormRelation)
     private formRelationModel: typeof HypeFormRelation,
-    @InjectModel(HypeFormPermissions)
-    private formPermissions: typeof HypeFormPermissions,
     @InjectConnection() private readonly knex: Knex,
   ) {}
 
-  async createForm(byUser, { name, slug }) {
+  async createForm(byUser: User, payload: { name: string; slug: string }) {
+    const { name, slug } = payload;
     const tableSlug = 'zz_' + slug.toLowerCase();
     Logger.log(`create table slug ${slug}`, 'createForm');
     const createTableRow = await this.sequelize.query(
@@ -51,7 +54,7 @@ export class FormService {
       { type: QueryTypes.RAW },
     );
     await this.formLayoutModel.create({
-      state: 'DRAFT',
+      state: FormLayoutStateEnum.DRAFT,
       createdBy: byUser.id,
       layout: '[]',
       formId: form.id,
@@ -62,8 +65,13 @@ export class FormService {
     };
   }
 
-  async getFormOnly({ id = null, slug = null, state = 'ACTIVE' }) {
-    const optExtra: { id?; slug? } = {};
+  async getFormOnly(payload: {
+    id?: number;
+    slug?: string;
+    state: FormStateType;
+  }) {
+    const { id, slug, state } = payload;
+    const optExtra: { id?: number; slug?: string } = {};
     if (id != null) {
       optExtra.id = id;
     } else {
@@ -80,18 +88,16 @@ export class FormService {
 
   /**
    *
-   * @param id
-   * @param slug
-   * @param layoutState 'ACTIVE' | 'DRAFT'
-   * @param excludeDeleteField
+   * @param payload
    */
-  async getForm({
-    id = null,
-    slug = null,
-    layoutState,
-    excludeDeleteField = true,
+  async getForm(payload: {
+    id?: number;
+    slug?: string;
+    layoutState: FormStateType;
+    excludeDeleteField: boolean;
   }) {
-    const optExtra: { id?; slug? } = {};
+    const { id, slug, layoutState, excludeDeleteField } = payload;
+    const optExtra: { id?: number; slug?: string } = {};
     if (id != null) {
       optExtra.id = id;
     } else {
@@ -104,7 +110,7 @@ export class FormService {
       .where({
         ...optExtra,
         deletedAt: null,
-        state: 'ACTIVE',
+        state: FormStateEnum.ACTIVE,
       })
       .toString();
 
@@ -175,7 +181,13 @@ export class FormService {
     return form;
   }
 
-  async addRelation(requestUser: User, formId, targetFormId, slug, connect) {
+  async addRelation(
+    requestUser: User,
+    formId: number,
+    targetFormId: number,
+    slug: string,
+    connect: { connectFromField: string; connectToField: string },
+  ) {
     const type = 'relation';
     const fieldType = 'int';
     const targetForm = await this.formModel.findOne({
@@ -353,23 +365,23 @@ export class FormService {
     return field;
   }
 
-  async publishLayout(byUser, { id }) {
+  async publishLayout(byUser: User, { id }) {
     const layout = await this.formLayoutModel.findByPk(id);
     await this.formLayoutModel.update(
       {
         updatedAt: new Date(),
         updatedBy: byUser.id,
-        state: 'OBSOLETE',
+        state: FormLayoutStateEnum.OBSOLETE,
       },
       {
         where: {
           formId: layout.formId,
-          state: 'ACTIVE',
+          state: FormLayoutStateEnum.ACTIVE,
         },
       },
     );
     await this.formLayoutModel.create({
-      state: 'ACTIVE',
+      state: FormLayoutStateEnum.ACTIVE,
       createdBy: byUser.id,
       layout: layout.layout,
       formId: layout.formId,
@@ -382,7 +394,7 @@ export class FormService {
   }
 
   async updateLayout(
-    byUser,
+    byUser: User,
     id: number,
     data: {
       layout: string;
@@ -390,7 +402,7 @@ export class FormService {
       script: string | any;
       options?: object | any;
       enableDraftMode: 0 | 1 | boolean;
-      requireCheckMode: 'ALWAYS' | 'BEFORE_ACTIVE' | 'BEFORE_ACTIVELOCK';
+      requireCheckMode: FormLayoutRequireCheckModeType;
     },
   ) {
     await this.formLayoutModel.update(

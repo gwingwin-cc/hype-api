@@ -17,13 +17,26 @@ import { FormService } from '../providers/form.service';
 import { Permissions } from '../../auth/permission.decorator';
 import { PermissionGuard } from '../../auth/guard/permission.guard';
 import { InjectModel } from '@nestjs/sequelize';
-import { HypeForm, HypeFormField, HypeFormPermissions } from '../../entity';
+import {
+  FormStateEnum,
+  HypeForm,
+  HypeFormField,
+  HypeFormPermissions,
+} from '../../entity';
 import { Attributes, FindOptions } from 'sequelize/types/model';
 import { TagsService } from '../providers/tags.service';
 import { HypeAuthGuard } from '../../hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
 import { Op } from 'sequelize';
-import { UpdaterFormPermissionDto } from '../dto/form.dto';
+import {
+  AddFormFieldRequest,
+  AddFormRelationRequest,
+  CreateFormRequest,
+  UpdateFieldRequest,
+  UpdateFormRequest,
+  UpdateFormScriptRequest,
+  UpdaterFormPermissionDto,
+} from '../dto/form.dto';
 
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -41,32 +54,30 @@ export class FormManageController {
 
   @Permissions('form_management')
   @Get(':id/draft')
-  async getFormDraft(@Request() req, @Param('id') id) {
+  async getFormDraft(@Param('id', new ParseIntPipe()) id: number) {
     return await this.formService.getForm({
       id,
-      layoutState: 'DRAFT',
+      layoutState: FormStateEnum.DRAFT,
       excludeDeleteField: false,
     });
   }
 
   @Get('find')
-  async getFormActive(@Request() req, @Query('id') id, @Query('slug') slug) {
-    let intId = null;
-    if (id != null) intId = parseInt(id);
+  async getFormActive(
+    @Query('id', new ParseIntPipe()) id: number,
+    @Query('slug') slug?: string,
+  ) {
     return await this.formService.getForm({
-      id: intId,
+      id,
       slug,
-      layoutState: 'ACTIVE',
+      layoutState: FormStateEnum.ACTIVE,
       excludeDeleteField: true,
     });
   }
 
   @Permissions('form_management')
   @Get('')
-  async getFormDatalist(
-    @Request() req: HypeRequest,
-    @Query('deleted') deleted: string,
-  ) {
+  async getFormDatalist(@Query('deleted') deleted?: string) {
     const where = { deletedAt: null };
     const filterOnlyDelete = deleted == 'true' || deleted == '1';
     if (filterOnlyDelete) {
@@ -90,7 +101,7 @@ export class FormManageController {
   @Permissions('form_management')
   @Patch(':id/permissions')
   async updatePermission(
-    @Request() req,
+    @Request() req: HypeRequest,
     @Param('id', ParseIntPipe) formId: number,
     @Body() body: UpdaterFormPermissionDto,
   ) {
@@ -147,8 +158,8 @@ export class FormManageController {
   @Permissions('form_management')
   @Post()
   async createForm(
-    @Request() req,
-    @Body() body: { slug: string; name: string },
+    @Request() req: HypeRequest,
+    @Body() body: CreateFormRequest,
   ) {
     const slug = body.slug.toLowerCase();
     Logger.log(`create table slug ${slug}`, 'createForm');
@@ -161,19 +172,11 @@ export class FormManageController {
   @Permissions('form_management')
   @Post(':id/fields')
   async addField(
-    @Request() req,
-    @Param('id') id,
-    @Body()
-    body: {
-      name: string;
-      formId: number;
-      slug: string;
-      fieldType: string;
-      componentTemplate: string;
-    },
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) formId: number,
+    @Body() body: AddFormFieldRequest,
   ) {
     const slug = body.slug.toLowerCase();
-    const formId = parseInt(id);
     Logger.log(`addField slug ${slug}`, 'addField');
     return await this.formService.addFormField(
       req.user,
@@ -188,33 +191,30 @@ export class FormManageController {
   @Permissions('form_management')
   @Delete(':formId/fields/:fid')
   async softDeleteField(
-    @Request() req,
-    @Param('formId') formId,
-    @Param('fid') id,
+    @Param('formId', new ParseIntPipe()) formId: number,
+    @Param('fid', new ParseIntPipe()) id: number,
   ) {
     Logger.log(`delete id ${formId}, ${id}`, 'deleteField');
-    await this.formService.softDeleteField(parseInt(formId), parseInt(id));
+    await this.formService.softDeleteField(formId, id);
     return;
   }
 
   @Permissions('form_management')
   @Delete(':formId/fields/:fid/hard')
   async hardDeleteField(
-    @Request() req,
-    @Param('formId') formId,
-    @Param('fid') id,
+    @Param('formId', new ParseIntPipe()) formId: number,
+    @Param('fid', new ParseIntPipe()) id: number,
   ) {
     Logger.log(`delete id ${formId} ${id}`, 'deleteComponent');
-    try {
-      await this.formService.hardDeleteField(parseInt(formId), parseInt(id));
-    } catch (e) {
-      throw new HttpException(e.message, 500);
-    }
+    await this.formService.hardDeleteField(formId, id);
   }
 
   @Permissions('form_management')
   @Delete(':id')
-  async deleteForm(@Request() req, @Param('id') id) {
+  async deleteForm(
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) id: number,
+  ) {
     await this.formModel.update(
       {
         deletedAt: new Date(),
@@ -222,7 +222,7 @@ export class FormManageController {
       },
       {
         where: {
-          id: parseInt(id),
+          id,
         },
       },
     );
@@ -231,7 +231,7 @@ export class FormManageController {
 
   @Permissions('form_management')
   @Patch(':id/restore')
-  async restoreForm(@Request() req, @Param('id') id) {
+  async restoreForm(@Param('id', new ParseIntPipe()) id: number) {
     await this.formModel.update(
       {
         deletedAt: null,
@@ -240,7 +240,7 @@ export class FormManageController {
       {
         paranoid: false,
         where: {
-          id: parseInt(id),
+          id: id,
         },
       },
     );
@@ -250,9 +250,9 @@ export class FormManageController {
   @Permissions('form_management')
   @Patch(':id/scripts')
   async updateFormScript(
-    @Request() req,
-    @Param('id') id,
-    @Body() body: { name: string; desc: string; scripts: any },
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) id: number,
+    @Body() body: UpdateFormScriptRequest,
   ) {
     return await this.formModel.update(
       {
@@ -262,7 +262,7 @@ export class FormManageController {
       },
       {
         where: {
-          id: parseInt(id),
+          id: id,
         },
       },
     );
@@ -271,9 +271,9 @@ export class FormManageController {
   @Permissions('form_management')
   @Patch(':id')
   async updateForm(
-    @Request() req,
-    @Param('id') id,
-    @Body() body: { name: string; desc: string },
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) id: number,
+    @Body() body: UpdateFormRequest,
   ) {
     const payload = Object.assign({}, body);
     delete payload['scripts'];
@@ -296,7 +296,7 @@ export class FormManageController {
       },
       {
         where: {
-          id: parseInt(id),
+          id: id,
         },
       },
     );
@@ -305,21 +305,15 @@ export class FormManageController {
   @Permissions('form_management')
   @Post(':id/add-relation')
   async addRelation(
-    @Request() req,
-    @Param('id') fid,
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) fid: number,
     @Body()
-    body: {
-      slug: string;
-      targetFormId: number;
-      connectFromField: string;
-      connectToField: string;
-    },
+    body: AddFormRelationRequest,
   ) {
-    const formId = parseInt(fid);
     try {
       return await this.formService.addRelation(
         req.user,
-        formId,
+        fid,
         body.targetFormId,
         body.slug,
         {
@@ -335,9 +329,9 @@ export class FormManageController {
   @Permissions('form_management')
   @Patch(':id/fields/:fid')
   async updateField(
-    @Request() req,
-    @Param('fid') id,
-    @Body() body: { name: string },
+    @Request() req: HypeRequest,
+    @Param('fid', new ParseIntPipe()) id: number,
+    @Body() body: UpdateFieldRequest,
   ) {
     return await this.formFieldModel.update(
       {
@@ -347,7 +341,7 @@ export class FormManageController {
       },
       {
         where: {
-          id: parseInt(id),
+          id: id,
         },
       },
     );

@@ -10,11 +10,10 @@ import { Express } from 'express';
 import { Sequelize } from 'sequelize-typescript';
 import { InjectModel } from '@nestjs/sequelize';
 import {
+  FormLayoutStateEnum,
   HypeForm,
   HypeFormField,
-  HypeFormLayout,
   HypeFormPermissions,
-  HypeFormRelation,
   HypePermission,
   PermissionGrantTypeEnum,
   User,
@@ -27,8 +26,13 @@ import xlsx from 'node-xlsx';
 import { FormService } from './form.service';
 import { BlobStorageService } from '../../blob-storage/blob-storage.service';
 import { InjectConnection } from 'nestjs-knex';
-import { FORM_RECORD_STATE, FORM_RECORD_TYPE } from '../dto/form-record.dto';
-import { HypeBaseForm } from '../../entity/HypeBaseForm';
+import {
+  FormRecordEnvEnum,
+  FormRecordEnvType,
+  FormRecordStateEnum,
+  FormRecordStateType,
+  HypeBaseForm,
+} from '../../entity/HypeBaseForm';
 
 @Injectable()
 export class FormRecordService {
@@ -39,18 +43,10 @@ export class FormRecordService {
     private sequelize: Sequelize,
     @InjectModel(HypeForm)
     private formModel: typeof HypeForm,
-    @InjectModel(HypeFormField)
-    private formFieldModel: typeof HypeFormField,
-    @InjectModel(HypeFormLayout)
-    private formLayoutModel: typeof HypeFormLayout,
-    @InjectModel(HypeFormRelation)
-    private formRelationModel: typeof HypeFormRelation,
-    @InjectModel(HypeFormPermissions)
-    private formPermissions: typeof HypeFormPermissions,
     @InjectConnection() private readonly knex: Knex,
   ) {}
 
-  async findOneById(slug, fid): Promise<HypeBaseForm> {
+  async findOneById(slug: string, fid: number): Promise<HypeBaseForm> {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     const sql = knexBuilder(tableSlug).where('id', '=', fid).toString();
@@ -86,8 +82,8 @@ export class FormRecordService {
         user,
         form.id,
         data,
-        FORM_RECORD_STATE.DRAFT,
-        FORM_RECORD_TYPE.DEV,
+        FormRecordStateEnum.DRAFT,
+        FormRecordEnvEnum.DEV,
       );
     },
     getDataList: async ({ formSlug, options }) => {
@@ -152,8 +148,8 @@ export class FormRecordService {
     byUser: User,
     formId: number,
     data: any,
-    recordState: FORM_RECORD_STATE,
-    recordType: FORM_RECORD_TYPE,
+    recordState: FormRecordStateType,
+    recordType: FormRecordEnvType,
   ) {
     const form = await this.formModel.findByPk(formId, {
       include: [HypeFormField],
@@ -268,13 +264,12 @@ export class FormRecordService {
     formId: number,
     dataId: number,
     data: any,
-    recordState,
+    recordState: FormRecordStateType,
   ) {
     delete data.approval;
     // await this.checkPermission(user.id, formId);
     let checkedRecordState: 'DRAFT' | 'ACTIVE' | 'ACTIVE_LOCK' = 'DRAFT';
     switch (recordState) {
-      case '':
       case null:
         checkedRecordState = 'DRAFT';
         break;
@@ -407,7 +402,18 @@ export class FormRecordService {
     }
   }
 
-  async find(slug, options) {
+  async find(
+    slug: string,
+    options?: {
+      page?: number;
+      perPage?: number;
+      search?: string;
+      where?: any;
+      orWhere?: any;
+      sort?: any;
+      columnList?: Array<string>;
+    },
+  ) {
     const tableSlug = 'zz_' + slug;
     // const knexBuilder = knex({ client: 'mysql' });
     let sqlBuild = this.knex
@@ -459,18 +465,26 @@ export class FormRecordService {
     });
   }
 
-  async findOne(slug, options) {
+  async findOne(
+    slug: string,
+    options?: {
+      page?: number;
+      perPage?: number;
+      limit?: number;
+      search?: string;
+      where?: any;
+      orWhere?: any;
+      sort?: any;
+      columnList?: Array<string>;
+    },
+  ) {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     let sqlBuild = knexBuilder(tableSlug).select(
       `${tableSlug}.*`,
       'users.username as createdByUser',
     );
-    if (
-      options != null &&
-      options.columnList != null &&
-      options.search != null
-    ) {
+    if (options?.columnList != null && options.search != null) {
       sqlBuild.where((builder) => {
         for (const cl of options.columnList) {
           builder.orWhere(cl, 'like', `%${options.search}%`);
@@ -478,11 +492,11 @@ export class FormRecordService {
         return builder;
       });
     }
-    if (options.where != null) {
+    if (options?.where != null) {
       sqlBuild.andWhere(options.where);
     }
     sqlBuild.leftJoin('users', 'users.id', `${tableSlug}.createdBy`);
-    if (options.sort != null) {
+    if (options?.sort != null) {
       sqlBuild = sqlBuild.orderBy(options.sort);
     }
     const sql = sqlBuild.limit(options.limit ?? 1).toString();
@@ -497,7 +511,7 @@ export class FormRecordService {
     return rows;
   }
 
-  async count(slug, where) {
+  async count(slug: string, where: any) {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     const sql = knexBuilder(`${tableSlug} as ${slug}`)
@@ -513,7 +527,7 @@ export class FormRecordService {
    * @param user
    * @param file
    */
-  async saveBlob(user, file: Express.Multer.File) {
+  async saveBlob(user: User, file: Express.Multer.File) {
     return this.blobService.createBlob(user, file);
   }
 
@@ -634,7 +648,8 @@ export class FormRecordService {
     await this.checkPermission(user.id, formId);
     const form = await this.formService.getForm({
       id: formId,
-      layoutState: 'ACTIVE',
+      layoutState: FormLayoutStateEnum.ACTIVE,
+      excludeDeleteField: true,
     });
 
     const tableSlug = 'zz_' + form.slug;

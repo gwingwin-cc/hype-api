@@ -20,7 +20,12 @@ import {
 } from '@nestjs/common';
 import xlsx from 'node-xlsx';
 import { InjectModel } from '@nestjs/sequelize';
-import { HypeForm, HypeFormField } from '../../entity';
+import {
+  FormLayoutStateEnum,
+  FormStateEnum,
+  HypeForm,
+  HypeFormField,
+} from '../../entity';
 import { FormService } from '../providers/form.service';
 import { FormRecordService } from '../providers/form-record.service';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
@@ -29,13 +34,17 @@ import { PermissionGuard } from '../../auth/guard/permission.guard';
 import { TagsService } from '../providers/tags.service';
 import {
   CreateFormRecordDto,
-  FORM_RECORD_STATE,
-  FORM_RECORD_TYPE,
   FormRecordDto,
+  FormRecordListQuery,
+  UpdateFormRecordRequest,
 } from '../dto/form-record.dto';
 import { HypeRequest } from '../../interfaces/request';
 import { HypeAuthGuard } from '../../hype-auth.guard';
 import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
+import {
+  FormRecordEnvEnum,
+  FormRecordStateEnum,
+} from '../../entity/HypeBaseForm';
 
 @Controller('forms')
 export class FormRecordController {
@@ -53,13 +62,7 @@ export class FormRecordController {
     @Req() req: HypeRequest,
     @Param('fid', ParseIntPipe) formId: number,
     @Query()
-    body: {
-      perPage: number;
-      page: number;
-      recordType?: 'DEV' | 'PROD';
-      [key: string]: any;
-      format: string;
-    },
+    query: FormRecordListQuery,
   ) {
     const granted = await this.formRecordService.validatePermissionGranted(
       formId,
@@ -72,15 +75,16 @@ export class FormRecordController {
     }
 
     let form: HypeForm;
-    if (body.includeForm) {
+    if (query.includeForm) {
       form = await this.formService.getForm({
         id: formId,
-        layoutState: 'ACTIVE',
+        layoutState: FormLayoutStateEnum.ACTIVE,
+        excludeDeleteField: true,
       });
     } else {
       form = await this.formService.getFormOnly({
         id: formId,
-        state: 'ACTIVE',
+        state: FormStateEnum.ACTIVE,
       });
     }
 
@@ -88,12 +92,12 @@ export class FormRecordController {
       throw new Error('Form not found.');
     }
 
-    if (body.recordType == null) {
-      body.recordType = 'PROD';
+    if (query.recordType == null) {
+      query.recordType = 'PROD';
     }
     const where = {};
     where[`${form.slug}.deletedAt`] = null;
-    where[`${form.slug}.recordType`] = body.recordType;
+    where[`${form.slug}.recordType`] = query.recordType;
     const [data, total] = await Promise.all([
       this.formRecordService.find(form.slug, { where }),
       this.formRecordService.count(form.slug, where),
@@ -108,7 +112,7 @@ export class FormRecordController {
   @UseGuards(HypeAnonymousAuthGuard)
   @Get(':fid/records/:id')
   async getRecordById(
-    @Req() req,
+    @Req() req: HypeRequest,
     @Param('fid', ParseIntPipe) formId: number,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FormRecordDto> {
@@ -169,10 +173,7 @@ export class FormRecordController {
     @Param('fid', ParseIntPipe) formId: number,
     @Param('id', ParseIntPipe) recordId: number,
     @Body()
-    body: {
-      data: any;
-      recordState: string;
-    },
+    body: UpdateFormRecordRequest,
   ): Promise<void> {
     const granted = await this.formRecordService.validatePermissionGranted(
       formId,
@@ -239,7 +240,8 @@ export class FormRecordController {
     );
     const form = await this.formService.getForm({
       slug: body.formSlug,
-      layoutState: 'ACTIVE',
+      layoutState: FormLayoutStateEnum.ACTIVE,
+      excludeDeleteField: true,
     });
     const dataTemplate = [...workSheetsFromBuffer[0].data[0]];
     const dataToSaveArr = [];
@@ -263,8 +265,8 @@ export class FormRecordController {
         req.user,
         form.id,
         d,
-        FORM_RECORD_STATE.ACTIVE,
-        FORM_RECORD_TYPE.PROD,
+        FormRecordStateEnum.ACTIVE,
+        FormRecordEnvEnum.PROD,
       );
       savedData.push(created);
     }
@@ -275,7 +277,6 @@ export class FormRecordController {
   @UseInterceptors(AnyFilesInterceptor())
   async uploadBlob(
     @Request() req: HypeRequest,
-    @Body() body: any,
     @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
     const user = req.user;

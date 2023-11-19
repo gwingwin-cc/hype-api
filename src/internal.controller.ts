@@ -2,11 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import { UserService } from './user/user.service';
 import { FormRecordService } from './form/providers/form-record.service';
 import { FormService } from './form/providers/form.service';
-import {
-  FORM_RECORD_STATE,
-  FORM_RECORD_TYPE,
-} from './form/dto/form-record.dto';
-
+import { FormLayoutStateEnum, User } from './entity';
+import { FormRecordEnvEnum, FormRecordStateEnum } from './entity/HypeBaseForm';
 @Controller()
 export class InternalController {
   constructor(
@@ -17,16 +14,16 @@ export class InternalController {
 
   @Get('internal/initial')
   async login(): Promise<void> {
-    await this.formService.createForm(1, {
+    await this.formService.createForm({ id: 1 } as User, {
       slug: 'app_setting',
       name: 'App Setting',
     });
-    await this.formService.createForm(1, {
+    await this.formService.createForm({ id: 1 } as User, {
       slug: 'profile',
       name: 'Profile',
     });
 
-    await this.formService.createForm(1, {
+    await this.formService.createForm({ id: 1 } as User, {
       slug: 'notify',
       name: 'notify',
     });
@@ -34,18 +31,21 @@ export class InternalController {
     console.log('try create app setting');
     const profileForm = await this.formService.getForm({
       slug: 'profile',
-      layoutState: 'DRAFT',
+      layoutState: FormLayoutStateEnum.DRAFT,
+      excludeDeleteField: true,
     });
 
     console.log('try create app setting');
     const settingForm = await this.formService.getForm({
       slug: 'app_setting',
-      layoutState: 'DRAFT',
+      layoutState: FormLayoutStateEnum.DRAFT,
+      excludeDeleteField: true,
     });
 
     const notifyForm = await this.formService.getForm({
       slug: 'notify',
-      layoutState: 'DRAFT',
+      layoutState: FormLayoutStateEnum.DRAFT,
+      excludeDeleteField: true,
     });
     const user = await this.usersService.findOne({ id: 1 });
     await this.formService.addFormField(
@@ -734,8 +734,8 @@ export class InternalController {
         organize_name: 'Hype SDK',
         main_profile: 'profile',
       },
-      FORM_RECORD_STATE.ACTIVE,
-      FORM_RECORD_TYPE.PROD,
+      FormRecordStateEnum.ACTIVE,
+      FormRecordEnvEnum.PROD,
     );
     await this.formDataService.createRecord(
       user,
@@ -743,8 +743,8 @@ export class InternalController {
       {
         user_id: '1',
       },
-      FORM_RECORD_STATE.ACTIVE,
-      FORM_RECORD_TYPE.PROD,
+      FormRecordStateEnum.ACTIVE,
+      FormRecordEnvEnum.PROD,
     );
   }
 }

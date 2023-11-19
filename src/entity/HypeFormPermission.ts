@@ -60,15 +60,7 @@ export class HypeFormPermissions extends Model {
   deletedBy: number;
 }
 
-export type PermissionGrantType =
-  | 'ACCESS_FORM'
-  | 'CREATE'
-  | 'READ_EDIT'
-  | 'READ_EDIT_DELETE'
-  | 'READ_ONLY_ALL'
-  | 'READ_EDIT_ALL'
-  | 'READ_EDIT_DELETE_ALL'
-  | 'CUSTOM';
+export type PermissionGrantType = keyof typeof PermissionGrantTypeEnum;
 
 export enum PermissionGrantTypeEnum {
   ACCESS_FORM = 'ACCESS_FORM',

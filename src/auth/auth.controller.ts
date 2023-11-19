@@ -15,7 +15,7 @@ export class AuthController {
   }
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async profile(@Request() req): Promise<any> {
+  async profile(@Request() req: HypeRequest): Promise<any> {
     return this.authService.profile(req.user);
   }
 }

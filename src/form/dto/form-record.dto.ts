@@ -1,20 +1,35 @@
-export enum FORM_RECORD_STATE {
-  ACTIVE = 'ACTIVE',
-  DRAFT = 'DRAFT',
-}
-
-export enum FORM_RECORD_TYPE {
-  DEV = 'DEV',
-  PROD = 'PROD',
-}
+import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  FormRecordEnvType,
+  FormRecordStateType,
+} from '../../entity/HypeBaseForm';
 
 export class CreateFormRecordDto {
   data: any;
-  recordState: FORM_RECORD_STATE;
-  recordType: FORM_RECORD_TYPE;
+  recordState: FormRecordStateType;
+  recordType: FormRecordEnvType;
 }
-export class UpdateFormRecordDto {
+export class UpdateFormRecordRequest {
   data: any;
-  recordState: FORM_RECORD_STATE;
+  recordState: FormRecordStateType;
 }
 export class FormRecordDto {}
+
+export class FormRecordListQuery {
+  @IsNumber()
+  @Type(() => Number)
+  perPage: number;
+
+  @IsNumber()
+  @Type(() => Number)
+  page: number;
+
+  @IsString()
+  @IsOptional()
+  recordType?: FormRecordEnvType;
+  @IsString()
+  format: string;
+
+  [key: string]: any;
+}
