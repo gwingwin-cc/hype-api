@@ -14,11 +14,7 @@ import { ApplicationService } from '../application/application.service';
 import { UserService } from '../user/user.service';
 import { FormRecordService } from '../form/providers/form-record.service';
 import { FormService } from '../form/providers/form.service';
-import {
-  FORM_RECORD_STATE,
-  FORM_RECORD_TYPE,
-} from '../form/dto/form-record.dto';
-
+import { FormRecordEnvEnum, FormRecordStateEnum } from '../entity/HypeBaseForm';
 @Injectable({ scope: Scope.REQUEST })
 export class AdminService {
   constructor(
@@ -45,24 +41,7 @@ export class AdminService {
       include: [HypePermission],
     });
   }
-  //
-  // async roles(params: {
-  //   skip?: number;
-  //   take?: number;
-  //   cursor?: Prisma.HerpRoleWhereUniqueInput;
-  //   where?: Prisma.HerpRoleWhereInput;
-  //   orderBy?: Prisma.HerpRoleOrderByWithRelationInput;
-  // }): Promise<HerpRole[]> {
-  //   const { skip, take, cursor, where, orderBy } = params;
-  //   return this.prisma.herpRole.findMany({
-  //     skip,
-  //     take,
-  //     cursor,
-  //     where,
-  //     orderBy,
-  //   });
-  // }
-  //
+
   async creatRole(data: Partial<HypeRole>): Promise<HypeRole> {
     return await this.roleModel.create(data);
   }
@@ -78,9 +57,10 @@ export class AdminService {
   ): Promise<any> {
     const { username, email, password, status } = payload;
     const hash = await this.userService.hashPassword(password);
-    const appSetting = await this.formDataService.findOne('app_setting', {});
+    const appSetting = await this.formDataService.findOne('app_setting');
     const profileForm = await this.formService.getFormOnly({
       slug: appSetting['main_profile'],
+      state: FormRecordStateEnum.ACTIVE,
     });
     const user = await this.userService.createUser({
       passwordHash: hash,
@@ -94,8 +74,8 @@ export class AdminService {
       {
         user_id: user.id,
       },
-      FORM_RECORD_STATE.ACTIVE,
-      FORM_RECORD_TYPE.PROD,
+      FormRecordStateEnum.ACTIVE,
+      FormRecordEnvEnum.PROD,
     );
     return user;
   }

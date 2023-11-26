@@ -30,3 +30,10 @@ export class HypeApplicationLayout extends BaseEntity {
   @Column(DataType.JSON)
   scripts: object;
 }
+
+export enum AppLayoutStateEnum {
+  ACTIVE = 'ACTIVE',
+  DRAFT = 'DRAFT',
+  CANCEL = 'CANCEL',
+  OBSOLETE = 'OBSOLETE',
+}

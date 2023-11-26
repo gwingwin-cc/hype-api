@@ -12,6 +12,8 @@ import {
 import { FormService } from '../providers/form.service';
 import { HypeRequest } from '../../interfaces/request';
 import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
+import { FormLayoutStateType } from '../../entity';
+import { FormRecordStateEnum } from '../../entity/HypeBaseForm';
 
 @Controller('forms')
 export class FormController {
@@ -24,9 +26,13 @@ export class FormController {
     @Param('slug') slug: string,
     @Query() query: { layout_state: string },
   ) {
+    if (FormRecordStateEnum[query.layout_state] == null) {
+      throw new BadRequestException('Invalid layout_state.');
+    }
     const form = await this.formService.getForm({
       slug: slug,
-      layoutState: query.layout_state ? query.layout_state : 'ACTIVE',
+      layoutState: query.layout_state as FormLayoutStateType,
+      excludeDeleteField: true,
     });
     if (form == null) {
       throw new BadRequestException('Form not found.');
@@ -49,10 +55,14 @@ export class FormController {
     @Param('id', ParseIntPipe) id: number,
     @Query() query: { layout_state: string },
   ) {
+    if (FormRecordStateEnum[query.layout_state] == null) {
+      throw new BadRequestException('Invalid layout_state.');
+    }
     const form = await this.formService.getForm({
       id: id,
       slug: null,
-      layoutState: query.layout_state ? query.layout_state : 'ACTIVE',
+      layoutState: query.layout_state as FormLayoutStateType,
+      excludeDeleteField: true,
     });
     if (form == null) {
       throw new BadRequestException('Form not found.');

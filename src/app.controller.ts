@@ -13,6 +13,7 @@ import { QueryTypes } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { FormRecordService } from './form/providers/form-record.service';
 import { FormService } from './form/providers/form.service';
+import { FormRecordStateEnum } from './entity/HypeBaseForm';
 
 @Controller()
 export class AppController {
@@ -83,6 +84,7 @@ export class AppController {
     const appSetting = await this.formDataService.findOne('app_setting', {});
     const profileForm = await this.formService.getFormOnly({
       slug: appSetting['main_profile'],
+      state: FormRecordStateEnum.ACTIVE,
     });
 
     const profile = await this.formDataService.findOne(profileForm.slug, {
