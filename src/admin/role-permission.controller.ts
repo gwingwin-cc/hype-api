@@ -88,7 +88,7 @@ export class RolePermissionController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('permission/datalist')
+  @Post('permissions/datalist')
   async getPermissionList(): Promise<{
     data: Array<HypePermission>;
     total: number;
@@ -112,7 +112,7 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Post('permission')
+  @Post('permissions')
   async createPermission(@Body() body: AdminCreatePermissionRequest) {
     return this.adminService.createPermission({
       name: body.name,
@@ -122,7 +122,7 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Delete('permission/:id')
+  @Delete('permissions/:id')
   async deletePermission(@Param('id') id: string, @Request() req: HypeRequest) {
     return this.adminService.deletePermission(req.user, {
       id: parseInt(id),
