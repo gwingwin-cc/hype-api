@@ -18,18 +18,22 @@ export class FormRecordDto {}
 
 export class FormRecordListQuery {
   @IsNumber()
+  @IsOptional()
   @Type(() => Number)
-  perPage: number;
+  perPage?: number;
 
   @IsNumber()
+  @IsOptional()
   @Type(() => Number)
-  page: number;
+  page?: number;
 
   @IsString()
   @IsOptional()
   recordType?: FormRecordEnvType;
+
   @IsString()
-  format: string;
+  @IsOptional()
+  format?: string;
 
   [key: string]: any;
 }

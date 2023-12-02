@@ -39,6 +39,14 @@ export class FormService {
     const { name, slug } = payload;
     const tableSlug = 'zz_' + slug.toLowerCase();
     Logger.log(`create table slug ${slug}`, 'createForm');
+    const existForm = await this.formModel.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+    if (existForm != null) {
+      throw new Error('form_slug_already_exist');
+    }
     const createTableRow = await this.sequelize.query(
       'SHOW CREATE TABLE hype_base_form',
       { type: QueryTypes.SELECT },

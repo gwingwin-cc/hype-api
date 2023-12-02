@@ -4,12 +4,12 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { UserService } from '../user/user.service';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { HypePermission, HypeRole } from '../entity';
@@ -17,11 +17,15 @@ import { PermissionGuard } from '../auth/guard/permission.guard';
 import { Permissions } from '../auth/permission.decorator';
 import { InjectModel } from '@nestjs/sequelize';
 import { HypeRequest } from '../interfaces/request';
+import {
+  AdminCreatePermissionRequest,
+  AdminCreateRoleRequest,
+} from './role-permission.dto';
+import { AdminAssignUserRoleRequest } from './role-permission.dto';
 
 @Controller('admin')
 export class RolePermissionController {
   constructor(
-    private userService: UserService,
     private adminService: AdminService,
     @InjectModel(HypePermission)
     private hypePermission: typeof HypePermission,
@@ -32,7 +36,7 @@ export class RolePermissionController {
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Get('roles')
-  async getRoles(): Promise<any> {
+  async getRoles(): Promise<{ data: Array<HypeRole>; total: number }> {
     const [data, total] = await Promise.all([
       this.hypeRole.findAll({
         where: {
@@ -50,15 +54,15 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Get('roles/:id')
-  async getRole(@Param('id') id: string): Promise<HypeRole> {
+  @Get('role/:id')
+  async getRole(@Param('id') id: string) {
     return this.adminService.getRole(parseInt(id));
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Post('roles')
-  async createRole(@Request() req, @Body() body: any): Promise<any> {
+  @Post('role')
+  async createRole(@Body() body: AdminCreateRoleRequest) {
     return await this.adminService.creatRole({
       slug: body.slug,
       name: body.name,
@@ -69,42 +73,26 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Patch('roles/:id/assign-permissions')
-  async applyPermission(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() body: any,
-  ): Promise<any> {
-    if (body.permissions != null) {
-      const roleId = parseInt(id);
-      await this.adminService.applyRolePermission(
-        req.user,
-        roleId,
-        body.permissions,
-      );
-      return this.adminService.getRole(roleId);
-    }
-  }
-
-  @UseGuards(PermissionGuard)
-  @Permissions('permission_management')
-  @Delete('roles/:id')
-  async deleteRole(@Param('id') id: string, @Request() req): Promise<any> {
+  @Delete('role/:id')
+  async deleteRole(@Param('id') id: string, @Request() req: HypeRequest) {
     return this.adminService.deleteRole(req.user, {
       id: parseInt(id),
     });
   }
 
-  @Get('users/:uid/assigned-role')
+  @Get('assign-role/:uid')
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
-  async getAssignRole(@Param('uid') id: string): Promise<any> {
+  async getAssignRole(@Param('uid') id: string) {
     return this.adminService.getAssignRole(parseInt(id));
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('permissions')
-  async getPermissionList(): Promise<any> {
+  @Post('permissions/datalist')
+  async getPermissionList(): Promise<{
+    data: Array<HypePermission>;
+    total: number;
+  }> {
     const [data, total] = await Promise.all([
       this.hypePermission.findAll({
         where: {
@@ -125,7 +113,7 @@ export class RolePermissionController {
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Post('permissions')
-  async createPermission(@Request() req, @Body() body: any): Promise<any> {
+  async createPermission(@Body() body: AdminCreatePermissionRequest) {
     return this.adminService.createPermission({
       name: body.name,
       slug: body.slug,
@@ -135,12 +123,22 @@ export class RolePermissionController {
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Delete('permissions/:id')
-  async deletePermission(
-    @Param('id') id: string,
-    @Request() req: HypeRequest,
-  ): Promise<any> {
+  async deletePermission(@Param('id') id: string, @Request() req: HypeRequest) {
     return this.adminService.deletePermission(req.user, {
       id: parseInt(id),
     });
+  }
+
+  @UseGuards(PermissionGuard)
+  @Permissions('user_management')
+  @Patch('user-roles/:uid')
+  async assignUserRole(
+    @Param('uid', new ParseIntPipe()) uid: number,
+    @Request() req: HypeRequest,
+    @Body() body: AdminAssignUserRoleRequest,
+  ) {
+    if (body.roles != null) {
+      return this.adminService.applyUserRoles(req.user, uid, body.roles);
+    }
   }
 }
