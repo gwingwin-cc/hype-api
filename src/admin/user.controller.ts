@@ -9,13 +9,16 @@ import {
   Post,
   UseGuards,
   HttpException,
+  ParseIntPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { AdminService } from './admin.service';
-import { HypePermission, HypeRole, User } from '../entity';
+import { HypePermission, HypeRole } from '../entity';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { Permissions } from '../auth/permission.decorator';
 import { InjectModel } from '@nestjs/sequelize';
+import { HypeRequest } from '../interfaces/request';
 
 @Controller('admin')
 export class UserController {
@@ -29,6 +32,21 @@ export class UserController {
   ) {}
 
   @UseGuards(PermissionGuard)
+  @Permissions('user_management')
+  @Post('users/:uid/api-key')
+  @HttpCode(201)
+  async adminCreateApiKey(@Param('uid', ParseIntPipe) uid: number) {
+    return this.userService.createApiKey(uid);
+  }
+
+  @UseGuards(PermissionGuard)
+  @Permissions('user_management')
+  @Delete('users/:uid/api-key/:key')
+  @HttpCode(204)
+  async adminDeleteApiKey(@Param('key') key: string) {
+    return this.userService.deleteApiKey(key);
+  }
+
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Get('users')
@@ -44,6 +62,7 @@ export class UserController {
       this.userService.count({
         where,
       }),
+      ,
     ]);
     return { data, total };
   }
@@ -103,14 +122,22 @@ export class UserController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Get('users/:uid')
-  async getUser(@Param('uid') uid: string): Promise<User | null> {
-    return this.userService.findOne({ id: parseInt(uid) });
+  async getUser(@Param('uid', ParseIntPipe) uid: number) {
+    const apiKeys = await this.userService.getUserApiKey(uid);
+    const user = await this.userService.findOne({ id: uid });
+    return {
+      user: user.toJSON(),
+      apiKeys: apiKeys ? [apiKeys] : [],
+    };
   }
 
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Post('users')
-  async createUser(@Request() req, @Body() body: any): Promise<any> {
+  async createUser(
+    @Request() req: HypeRequest,
+    @Body() body: any,
+  ): Promise<any> {
     return this.adminService.createUser(req.user, body);
   }
 
@@ -119,7 +146,7 @@ export class UserController {
   @Patch('users/:uid/assign-roles')
   async applyRoles(
     @Param('uid') uid: string,
-    @Request() req,
+    @Request() req: HypeRequest,
     @Body() body: any,
   ): Promise<any> {
     if (body.roles != null) {
@@ -131,6 +158,7 @@ export class UserController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Delete('users/:uid')
+  @HttpCode(204)
   async deleteUser(@Param('uid') uid: string): Promise<any> {
     return this.userService.updateUser({
       where: { id: parseInt(uid) },

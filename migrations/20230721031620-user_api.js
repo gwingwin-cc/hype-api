@@ -4,25 +4,29 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
       `
-          create table user_api
+          create table user_apis
           (
-              id         VARCHAR(255)                         not null,
-              user_id    int                                  not null,
-              status     VARCHAR(50)                          null,
-              created_at DATETIME default CURRENT_TIMESTAMP() null,
-              updated_at DATETIME                             null,
-              deleted_at DATETIME                             null,
-              constraint pk
-                  primary key (id)
+              id        varchar(255)                         not null
+                  primary key,
+              userId    int                                  not null,
+              status    varchar(50)                          null,
+              createdBy int                                  not null,
+              createdAt datetime default current_timestamp() null,
+              updatedAt datetime                             null,
+              updatedBy int                                  null,
+              deletedAt datetime                             null,
+              deletedBy int                                  null
           );
-            `,
+
+
+      `,
     );
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
       `
-              drop table user_api;
+              drop table user_apis;
           `,
     );
   },

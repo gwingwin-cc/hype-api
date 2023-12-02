@@ -37,6 +37,7 @@ import {
   UpdateFormScriptRequest,
   UpdaterFormPermissionDto,
 } from '../dto/form.dto';
+import { rethrow } from '@nestjs/core/helpers/rethrow';
 
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -163,10 +164,17 @@ export class FormManageController {
   ) {
     const slug = body.slug.toLowerCase();
     Logger.log(`create table slug ${slug}`, 'createForm');
-    return this.formService.createForm(req.user, {
-      name: body.name,
-      slug: body.slug,
-    });
+
+    try {
+      await this.formService.createForm(req.user, {
+        name: body.name,
+        slug: body.slug,
+      });
+    } catch (e) {
+      if (e.message == 'form_slug_already_exist')
+        throw new HttpException(e.message, 400);
+      rethrow(e);
+    }
   }
 
   @Permissions('form_management')
