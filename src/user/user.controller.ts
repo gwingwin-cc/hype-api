@@ -8,12 +8,10 @@ import {
   Get,
   Delete,
   Param,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { HypeRequest } from '../interfaces/request';
-import { PermissionGuard } from '../auth/guard/permission.guard';
 
 @Controller('user')
 export class UserController {

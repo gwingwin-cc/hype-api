@@ -39,7 +39,7 @@ export class UserService {
       },
       offset: skip,
       limit: take,
-      order: [['id', 'DESC']],
+      order: [['id', 'ASC']],
       attributes: { exclude: ['passwordHash'] },
       include: [{ model: HypeRole, attributes: ['id', 'name', 'slug'] }],
     });

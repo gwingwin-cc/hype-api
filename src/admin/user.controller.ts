@@ -62,7 +62,6 @@ export class UserController {
       this.userService.count({
         where,
       }),
-      ,
     ]);
     return { data, total };
   }
@@ -70,7 +69,10 @@ export class UserController {
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Post('users/:uid/password')
-  async changePassword(@Request() req, @Body() body: any): Promise<any> {
+  async changePassword(
+    @Param('uid', ParseIntPipe) uid: number,
+    @Body() body: any,
+  ): Promise<any> {
     const format = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
     const isUpperCase = (string) => /[A-Z]/.test(string);
     if (
@@ -81,7 +83,7 @@ export class UserController {
       const hash = await this.userService.hashPassword(body.password);
       return this.userService.updateUser({
         where: {
-          id: body.id,
+          id: uid,
         },
         data: {
           passwordHash: hash,
