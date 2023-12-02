@@ -88,7 +88,7 @@ export class RolePermissionController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('permissions/datalist')
+  @Get('permissions')
   async getPermissionList(): Promise<{
     data: Array<HypePermission>;
     total: number;

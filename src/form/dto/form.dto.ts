@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsNumber,
   IsObject,
+  IsOptional,
   IsString,
 } from 'class-validator';
 
@@ -55,14 +56,19 @@ export class UpdateFormLayoutRequest {
   @IsString()
   layout: string;
   @IsString()
-  script: string;
+  @IsOptional()
+  script?: string;
   @IsObject()
-  options: object | any;
+  @IsOptional()
+  options?: object | any;
   @IsArray()
-  approval: Array<any>;
+  @IsOptional()
+  approval?: Array<any>;
   @IsBoolean()
-  enableDraftMode: 0 | 1 | boolean;
+  @IsOptional()
+  enableDraftMode?: 0 | 1 | boolean;
   @IsString()
+  @IsOptional()
   requireCheckMode: FormLayoutRequireCheckModeEnum;
 }
 
