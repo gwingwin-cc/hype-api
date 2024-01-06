@@ -170,7 +170,7 @@ export class FormRecordController {
   }
   @UseGuards(HypeAnonymousAuthGuard)
   @Delete(':fid/records/:id')
-  async DeleteRecord(
+  async deleteRecord(
     @Request() req: HypeRequest,
     @Param('fid') formId: number,
     @Param('id') id: number,
@@ -224,12 +224,29 @@ export class FormRecordController {
   @Post(':fid/records')
   async createRecord(
     @Request() req: HypeRequest,
-    @Param('fid', ParseIntPipe) formId: number,
+    @Param('fid') formId: string,
     @Body() body: CreateFormRecordDto,
   ) {
+    let form: HypeForm;
+    const firstLetter = formId[0];
+    if (/[a-zA-Z]/.test(firstLetter)) {
+      form = await this.formModel.findOne({
+        where: {
+          slug: formId,
+        },
+        include: [HypeFormField],
+      });
+    } else {
+      form = await this.formModel.findOne({
+        where: {
+          id: parseInt(formId),
+        },
+        include: [HypeFormField],
+      });
+    }
     return await this.formRecordService.createRecord(
       req.user,
-      formId,
+      form.id,
       body.data,
       body.recordState,
       body.recordType,

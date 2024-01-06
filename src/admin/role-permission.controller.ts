@@ -54,7 +54,7 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Get('role/:id')
+  @Get('roles/:id')
   async getRole(@Param('id') id: string) {
     return this.adminService.getRole(parseInt(id));
   }
@@ -127,6 +127,25 @@ export class RolePermissionController {
     return this.adminService.deletePermission(req.user, {
       id: parseInt(id),
     });
+  }
+
+  @UseGuards(PermissionGuard)
+  @Permissions('permission_management')
+  @Patch('roles/:id/assign-permissions')
+  async applyPermission(
+    @Param('id') id: string,
+    @Request() req: HypeRequest,
+    @Body() body: any,
+  ): Promise<any> {
+    if (body.permissions != null) {
+      const roleId = parseInt(id);
+      await this.adminService.applyRolePermission(
+        req.user,
+        roleId,
+        body.permissions,
+      );
+      return this.adminService.getRole(roleId);
+    }
   }
 
   @UseGuards(PermissionGuard)

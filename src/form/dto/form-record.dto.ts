@@ -7,8 +7,10 @@ import {
 
 export class CreateFormRecordDto {
   data: any;
-  recordState: FormRecordStateType;
-  recordType: FormRecordEnvType;
+  @IsOptional()
+  recordState?: FormRecordStateType;
+  @IsOptional()
+  recordType?: FormRecordEnvType;
 }
 export class UpdateFormRecordRequest {
   data: any;

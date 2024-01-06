@@ -149,8 +149,8 @@ export class FormRecordService {
     createdBy: User,
     formId: number,
     data: any,
-    recordState: FormRecordStateType,
-    recordType: FormRecordEnvType,
+    recordState: FormRecordStateType = FormRecordStateEnum.ACTIVE,
+    recordType: FormRecordEnvType = FormRecordEnvEnum.PROD,
   ) {
     const granted = await this.validatePermissionGranted(
       formId,
