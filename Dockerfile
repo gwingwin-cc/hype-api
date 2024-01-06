@@ -14,7 +14,7 @@ WORKDIR /home/node/app
 # where available (npm@5+)
 COPY --chown=node package.json yarn.lock ./
 
-RUN yarn
+RUN yarn install --frozen-lockfile
 # Bundle app source code
 COPY --chown=node . .
 

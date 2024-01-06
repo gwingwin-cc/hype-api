@@ -726,7 +726,7 @@ export class InternalController {
       id: profileForm.layouts[0].id,
     });
 
-    await this.formDataService.createRecord(
+    await this.formDataService.saveRecord(
       user,
       settingForm.id,
       {
@@ -737,7 +737,7 @@ export class InternalController {
       FormRecordStateEnum.ACTIVE,
       FormRecordEnvEnum.PROD,
     );
-    await this.formDataService.createRecord(
+    await this.formDataService.saveRecord(
       user,
       profileForm.id,
       {

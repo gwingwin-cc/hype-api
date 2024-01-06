@@ -34,8 +34,6 @@ export class AddFormFieldRequest {
   @IsString()
   name: string;
   @IsString()
-  formId: number;
-  @IsString()
   slug: string;
   @IsString()
   fieldType: string;

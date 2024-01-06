@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -78,7 +79,7 @@ export class FormRecordService {
       if (form == null) {
         throw new Error('form not found:' + formSlug);
       }
-      return this.createRecord(
+      return this.saveRecord(
         user,
         form.id,
         data,
@@ -145,6 +146,34 @@ export class FormRecordService {
   }
 
   async createRecord(
+    createdBy: User,
+    formId: number,
+    data: any,
+    recordState: FormRecordStateType,
+    recordType: FormRecordEnvType,
+  ) {
+    const granted = await this.validatePermissionGranted(
+      formId,
+      null,
+      createdBy,
+      'create',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to createRecord.',
+      );
+    }
+    return {
+      id: await this.saveRecord(
+        createdBy,
+        formId,
+        data,
+        recordState,
+        recordType,
+      ),
+    };
+  }
+  async saveRecord(
     byUser: User,
     formId: number,
     data: any,

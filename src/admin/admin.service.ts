@@ -68,7 +68,7 @@ export class AdminService {
       email: email,
       status: status,
     });
-    await this.formDataService.createRecord(
+    await this.formDataService.saveRecord(
       byUser,
       profileForm.id,
       {

@@ -26,13 +26,10 @@
     "migrate:dev": "sequelize-cli db:migrate --env development",
     "migrate:dev:reset": "sequelize-cli db:migrate:undo:all --env development",
     "migrate:dev:seed": "sequelize-cli db:seed:all --env development",
-    "migrate:dev:seed:reset": "sequelize-cli db:seed:undo:all --env development",
-    "migrate:test": "sequelize-cli db:migrate --env test",
-    "migrate:test:reset": "sequelize-cli db:migrate:undo:all --env test",
-    "migrate:test:seed": "sequelize-cli db:seed:all --env test",
-    "migrate:test:seed:reset": "sequelize-cli db:seed:undo:all --env test"
+    "migrate:dev:seed:reset": "sequelize-cli db:seed:undo:all --env development"
   },
   "dependencies": {
+    "@nestjs/cache-manager": "^2.1.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",
@@ -62,7 +59,8 @@
     "rxjs": "^7.8.1",
     "safe-eval": "^0.4.1",
     "sequelize": "^6.23.0",
-    "sequelize-typescript": "^2.1.3"
+    "sequelize-typescript": "^2.1.3",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

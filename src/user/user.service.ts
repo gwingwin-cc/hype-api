@@ -23,7 +23,7 @@ export class UserService {
       where: {
         ...userWhereUniqueInput,
       },
-      include: [HypeRole],
+      include: [{ model: HypeRole, attributes: ['id', 'name', 'slug'] }],
     });
   }
 

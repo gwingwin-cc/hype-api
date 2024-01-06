@@ -60,12 +60,27 @@ export class FormRecordController {
   @Get(':fid/records')
   async getRecordList(
     @Req() req: HypeRequest,
-    @Param('fid', ParseIntPipe) formId: number,
+    @Param('fid') formId: string,
     @Query()
     query: FormRecordListQuery,
   ) {
+    // if formId letter 0 is letter then it is a slug
+    const firstLetter = formId[0];
+    let form: HypeForm;
+    if (/[a-zA-Z]/.test(firstLetter)) {
+      form = await this.formService.getFormOnly({
+        slug: formId,
+        state: FormStateEnum.ACTIVE,
+      });
+    } else {
+      form = await this.formService.getFormOnly({
+        id: parseInt(formId),
+        state: FormStateEnum.ACTIVE,
+      });
+    }
+
     const granted = await this.formRecordService.validatePermissionGranted(
-      formId,
+      form.id,
       null,
       req.user,
       'read',
@@ -74,17 +89,11 @@ export class FormRecordController {
       throw new BadRequestException('You do not have permission to access.');
     }
 
-    let form: HypeForm;
     if (query.includeForm) {
       form = await this.formService.getForm({
-        id: formId,
+        id: form.id,
         layoutState: FormLayoutStateEnum.ACTIVE,
         excludeDeleteField: true,
-      });
-    } else {
-      form = await this.formService.getFormOnly({
-        id: formId,
-        state: FormStateEnum.ACTIVE,
       });
     }
 
@@ -113,11 +122,34 @@ export class FormRecordController {
   @Get(':fid/records/:id')
   async getRecordById(
     @Req() req: HypeRequest,
-    @Param('fid', ParseIntPipe) formId: number,
+    @Param('fid') formId: string,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FormRecordDto> {
+    // if formId letter 0 is letter then it is a slug
+    const firstLetter = formId[0];
+    let form: HypeForm;
+    if (/[a-zA-Z]/.test(firstLetter)) {
+      form = await this.formModel.findOne({
+        where: {
+          slug: formId,
+        },
+        include: [HypeFormField],
+      });
+    } else {
+      form = await this.formModel.findOne({
+        where: {
+          id: parseInt(formId),
+        },
+        include: [HypeFormField],
+      });
+    }
+
+    if (form == null) {
+      throw new BadRequestException('Form not found.');
+    }
+
     const granted = await this.formRecordService.validatePermissionGranted(
-      formId,
+      form.id,
       id,
       req.user,
       'read',
@@ -125,15 +157,7 @@ export class FormRecordController {
     if (!granted) {
       throw new BadRequestException('You do not have permission to access.');
     }
-    const form = await this.formModel.findOne({
-      where: {
-        id: formId,
-      },
-      include: [HypeFormField],
-    });
-    if (form == null) {
-      throw new BadRequestException('Form not found.');
-    }
+
     const where = {};
     where[`zz_${form.slug}.deletedAt`] = null;
     const data = await this.formRecordService.findOneById(form.slug, id);
@@ -203,26 +227,13 @@ export class FormRecordController {
     @Param('fid', ParseIntPipe) formId: number,
     @Body() body: CreateFormRecordDto,
   ) {
-    const granted = await this.formRecordService.validatePermissionGranted(
-      formId,
-      null,
+    return await this.formRecordService.createRecord(
       req.user,
-      'create',
+      formId,
+      body.data,
+      body.recordState,
+      body.recordType,
     );
-    if (!granted) {
-      throw new BadRequestException(
-        'You do not have permission to createRecord.',
-      );
-    }
-    return {
-      id: await this.formRecordService.createRecord(
-        req.user,
-        formId,
-        body.data,
-        body.recordState,
-        body.recordType,
-      ),
-    };
   }
 
   @Post('import-data')
@@ -261,7 +272,7 @@ export class FormRecordController {
 
     const savedData = [];
     for (const d of dataToSaveArr) {
-      const created = await this.formRecordService.createRecord(
+      const created = await this.formRecordService.saveRecord(
         req.user,
         form.id,
         d,
