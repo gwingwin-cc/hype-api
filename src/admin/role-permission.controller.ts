@@ -61,7 +61,7 @@ export class RolePermissionController {
 
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
-  @Post('role')
+  @Post('roles')
   async createRole(@Body() body: AdminCreateRoleRequest) {
     return await this.adminService.creatRole({
       slug: body.slug,

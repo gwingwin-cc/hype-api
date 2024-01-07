@@ -2,7 +2,7 @@
 const { hash } = require('argon2');
 
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface) {
     const passwordHash = await hash('Admin@hype');
     await queryInterface.bulkInsert(
       'users',
@@ -411,7 +411,7 @@ module.exports = {
     );
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.bulkDelete('hype_user_roles', null, {});
     await queryInterface.bulkDelete('hype_role_permissions', null, {});
     await queryInterface.bulkDelete('hype_permissions', null, {});

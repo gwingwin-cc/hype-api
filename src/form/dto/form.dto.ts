@@ -88,7 +88,9 @@ export class AddFormRelationRequest {
 
 export class UpdateFormRequest {
   @IsString()
-  name: string;
+  @IsOptional()
+  name?: string;
   @IsString()
-  desc: string;
+  @IsOptional()
+  desc?: string;
 }

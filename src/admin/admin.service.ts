@@ -114,40 +114,6 @@ export class AdminService {
     );
   }
 
-  // async assignRole(
-  //   requestUser: User,
-  //   userId: number,
-  //   roleId: number,
-  // ): Promise<HerpUserMapRole> {
-  //   const user = await this.prisma.user.findUnique({ where: { id: userId } });
-  //   const role = await this.prisma.herpRole.findUnique({
-  //     where: { id: roleId },
-  //   });
-  //   if (role == null) {
-  //     throw new Error('this role not exist');
-  //   }
-  //   const assignedRole = await this.prisma.herpUserMapRole.findFirst({
-  //     where: { roleId, userId },
-  //   });
-  //   if (assignedRole != null) {
-  //     throw new Error('this role already assigned');
-  //   }
-  //
-  //   return this.prisma.herpUserMapRole.create({
-  //     data: { userId: user.id, roleId: role.id, createdBy: requestUser.id },
-  //   });
-  // }
-  //
-  // async unassignRole(
-  //   requestUser: User,
-  //   userId: number,
-  //   roleId: number,
-  // ): Promise<any> {
-  //   return this.prisma.herpUserMapRole.deleteMany({
-  //     where: { roleId, userId },
-  //   });
-  // }
-  //
   async getAssignRole(userId: number): Promise<Array<UserRoles>> {
     return await this.userRolesModel.findAll({
       where: { userId },
