@@ -26,7 +26,7 @@ FROM node:16-alpine
 
 ENV NODE_ENV=production
 USER node
-WORKDIR /home/node
+WORKDIR /home/node/app
 
 COPY --from=builder --chown=node:node /home/node/app/package*.json ./
 COPY --from=builder --chown=node:node /home/node/app/node_modules/ ./node_modules/
@@ -34,6 +34,7 @@ COPY --from=builder --chown=node:node /home/node/app/dist/ ./dist/
 COPY --from=builder --chown=node:node /home/node/app/config/ ./config/
 COPY --from=builder --chown=node:node /home/node/app/migrations/ ./migrations/
 COPY --from=builder --chown=node:node /home/node/app/seeders/ ./seeders/
+COPY --from=builder --chown=node:node /home/node/app/init-config.js ./init-config.js
 
 # Bind to all network interfaces so that it can be mapped to the host OS
 ENV HOST=0.0.0.0 PORT=3000

@@ -1,6 +1,4 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   HypePermission,
   HypeRole,
@@ -15,14 +13,14 @@ import { UserService } from '../user/user.service';
 import { FormRecordService } from '../form/providers/form-record.service';
 import { FormService } from '../form/providers/form.service';
 import { FormRecordEnvEnum, FormRecordStateEnum } from '../entity/HypeBaseForm';
-@Injectable({ scope: Scope.REQUEST })
+
+@Injectable()
 export class AdminService {
   constructor(
     private userService: UserService,
     private formService: FormService,
     private formDataService: FormRecordService,
     private applicationService: ApplicationService,
-    @Inject(REQUEST) private readonly request: Request,
     @InjectModel(HypeRole)
     private roleModel: typeof HypeRole,
     @InjectModel(HypePermission)
@@ -32,6 +30,13 @@ export class AdminService {
     @InjectModel(RolePermissions)
     private rolePermissionModel: typeof RolePermissions,
   ) {}
+
+  async onModuleInit() {
+    const user = await this.userService.findOne({
+      id: 1,
+    });
+    await this.initProject(user);
+  }
 
   async getRole(id: number): Promise<HypeRole> {
     return this.roleModel.findOne({
@@ -214,6 +219,13 @@ export class AdminService {
   }
 
   async initProject(initUser: User) {
+    const settingForm = await this.formService.getFormOnly({
+      slug: 'app_setting',
+      state: FormRecordStateEnum.ACTIVE,
+    });
+    Logger.log(`settingForm exist ${settingForm != null}`);
+    if (settingForm != null) return;
+    Logger.log(`start initProject`);
     const { form } = await this.formService.createForm(initUser, {
       name: 'App Setting',
       slug: 'app_setting',
@@ -280,15 +292,5 @@ export class AdminService {
       'login_image',
       'loginImage',
     );
-
-    await this.applicationService.createApp(initUser, {
-      name: 'Main',
-      slug: 'main',
-      appType: 'APP',
-    });
-
-    await this.applicationService.publishLayout(initUser, {
-      id: 1,
-    });
   }
 }
