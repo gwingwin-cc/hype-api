@@ -25,8 +25,8 @@ export class AuthService {
     return null;
   }
 
-  async generateToken(user: any) {
-    const userRoles = await this.usersService.getUserRoles(user);
+  async generateToken(user: User) {
+    const userRoles = await this.usersService.getUserRoles(user.id);
     // const userRoles = userMapRole.map((ump) => ump.roles);
     // console.log(userRoles);
     const payload = {
@@ -91,10 +91,9 @@ export class AuthService {
     return hmac.update(signString).digest('hex');
   }
 
-  validateJwt(token: string) {
+  validateJwt(token: string): object | false {
     try {
-      this.jwtService.verify(token);
-      return true;
+      return this.jwtService.verify(token);
     } catch (e) {
       return false;
     }

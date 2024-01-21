@@ -1,12 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AllowColumnTypes } from '../interfaces/constant';
 import { InjectModel } from '@nestjs/sequelize';
 import {
+  FormLayoutRequireCheckModeType,
+  FormLayoutStateEnum,
+  FormStateEnum,
+  FormStateType,
   HypeForm,
   HypeFormField,
   HypeFormLayout,
   HypeFormPermissions,
   HypeFormRelation,
+  HypePermission,
+  PermissionGrantType,
   User,
 } from '../../entity';
 import { Sequelize } from 'sequelize-typescript';
@@ -26,14 +32,21 @@ export class FormService {
     private formLayoutModel: typeof HypeFormLayout,
     @InjectModel(HypeFormRelation)
     private formRelationModel: typeof HypeFormRelation,
-    @InjectModel(HypeFormPermissions)
-    private formPermissions: typeof HypeFormPermissions,
     @InjectConnection() private readonly knex: Knex,
   ) {}
 
-  async createForm(byUser, { name, slug }) {
+  async createForm(byUser: User, payload: { name: string; slug: string }) {
+    const { name, slug } = payload;
     const tableSlug = 'zz_' + slug.toLowerCase();
     Logger.log(`create table slug ${slug}`, 'createForm');
+    const existForm = await this.formModel.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+    if (existForm != null) {
+      throw new Error('form_slug_already_exist');
+    }
     const createTableRow = await this.sequelize.query(
       'SHOW CREATE TABLE hype_base_form',
       { type: QueryTypes.SELECT },
@@ -49,7 +62,7 @@ export class FormService {
       { type: QueryTypes.RAW },
     );
     await this.formLayoutModel.create({
-      state: 'DRAFT',
+      state: FormLayoutStateEnum.DRAFT,
       createdBy: byUser.id,
       layout: '[]',
       formId: form.id,
@@ -60,8 +73,13 @@ export class FormService {
     };
   }
 
-  async getFormOnly({ id = null, slug = null, state = 'ACTIVE' }) {
-    const optExtra: { id?; slug? } = {};
+  async getFormOnly(payload: {
+    id?: number;
+    slug?: string;
+    state: FormStateType;
+  }) {
+    const { id, slug, state } = payload;
+    const optExtra: { id?: number; slug?: string } = {};
     if (id != null) {
       optExtra.id = id;
     } else {
@@ -78,18 +96,16 @@ export class FormService {
 
   /**
    *
-   * @param id
-   * @param slug
-   * @param layoutState 'ACTIVE' | 'DRAFT'
-   * @param excludeDeleteField
+   * @param payload
    */
-  async getForm({
-    id = null,
-    slug = null,
-    layoutState,
-    excludeDeleteField = true,
+  async getForm(payload: {
+    id?: number;
+    slug?: string;
+    layoutState: FormStateType;
+    excludeDeleteField: boolean;
   }) {
-    const optExtra: { id?; slug? } = {};
+    const { id, slug, layoutState, excludeDeleteField } = payload;
+    const optExtra: { id?: number; slug?: string } = {};
     if (id != null) {
       optExtra.id = id;
     } else {
@@ -102,7 +118,7 @@ export class FormService {
       .where({
         ...optExtra,
         deletedAt: null,
-        state: 'ACTIVE',
+        state: FormStateEnum.ACTIVE,
       })
       .toString();
 
@@ -111,7 +127,7 @@ export class FormService {
     });
     const form = formArr[0];
     if (form == null) {
-      throw new Error('Form ID or Slug not exist.');
+      throw new BadRequestException('Form ID or Slug not exist.');
     }
 
     const layouts$ = this.sequelize.query(
@@ -122,7 +138,7 @@ export class FormService {
     );
 
     const permissions$ = this.sequelize.query(
-      `SELECT hp.* FROM hype_permissions hp
+      `SELECT hp.*, hfp.grant FROM hype_permissions hp
     INNER JOIN hype_form_permissions hfp ON hfp.permissionId = hp.id AND hfp.deletedAt IS NULL
     WHERE hfp.formId = ${form.id} AND hp.deletedAt IS NULL
     `,
@@ -160,9 +176,6 @@ export class FormService {
       ],
     });
 
-    fields$.then();
-    permissions$.then();
-    layouts$.then();
     const resultArr = await Promise.all([
       fields$,
       relations,
@@ -174,28 +187,15 @@ export class FormService {
     form['permissions'] = resultArr[2];
     form['layouts'] = resultArr[3];
     return form;
-    // return this.formModel.findOne({
-    //   where: {
-    //     ...optExtra,
-    //     deletedAt: null,
-    //     state: 'ACTIVE',
-    //   },
-    //   include: [
-    //     HypeFormPermissions,
-    //     {
-    //       model: HypeFormField,
-    //       include: [{ model: HypeFormRelation }],
-    //     },
-    //     HypeFormRelation,
-    //     {
-    //       model: HypeFormLayout,
-    //       where: { state: state },
-    //     },
-    //   ],
-    // });
   }
 
-  async addRelation(requestUser: User, formId, targetFormId, slug, connect) {
+  async addRelation(
+    requestUser: User,
+    formId: number,
+    targetFormId: number,
+    slug: string,
+    connect: { connectFromField: string; connectToField: string },
+  ) {
     const type = 'relation';
     const fieldType = 'int';
     const targetForm = await this.formModel.findOne({
@@ -373,23 +373,23 @@ export class FormService {
     return field;
   }
 
-  async publishLayout(byUser, { id }) {
+  async publishLayout(byUser: User, { id }) {
     const layout = await this.formLayoutModel.findByPk(id);
     await this.formLayoutModel.update(
       {
         updatedAt: new Date(),
         updatedBy: byUser.id,
-        state: 'OBSOLETE',
+        state: FormLayoutStateEnum.OBSOLETE,
       },
       {
         where: {
           formId: layout.formId,
-          state: 'ACTIVE',
+          state: FormLayoutStateEnum.ACTIVE,
         },
       },
     );
     await this.formLayoutModel.create({
-      state: 'ACTIVE',
+      state: FormLayoutStateEnum.ACTIVE,
       createdBy: byUser.id,
       layout: layout.layout,
       formId: layout.formId,
@@ -402,7 +402,7 @@ export class FormService {
   }
 
   async updateLayout(
-    byUser,
+    byUser: User,
     id: number,
     data: {
       layout: string;
@@ -410,7 +410,7 @@ export class FormService {
       script: string | any;
       options?: object | any;
       enableDraftMode: 0 | 1 | boolean;
-      requireCheckMode: 'ALWAYS' | 'BEFORE_ACTIVE' | 'BEFORE_ACTIVELOCK';
+      requireCheckMode: FormLayoutRequireCheckModeType;
     },
   ) {
     await this.formLayoutModel.update(
@@ -432,39 +432,56 @@ export class FormService {
     );
   }
 
-  // async addMappingRelation(requestUser: User, formId, compId, targetFormId) {
-  //   const targetForm = await this.prismaService.herpForm.findUnique({
-  //     where: {
-  //       id: targetFormId,
-  //     },
-  //   });
-  //
-  //   const baseForm = await this.prismaService.herpForm.findUnique({
-  //     where: {
-  //       id: formId,
-  //     },
-  //   });
-  //
-  //   const component = await this.addComponent(
-  //     requestUser,
-  //     baseForm.id,
-  //     'INT',
-  //     'mapping_relation',
-  //     targetForm.slug + '_id',
-  //     'Relation with ' + targetForm.name,
-  //   );
-  //
-  //   const relation = await this.prismaService.herpFormRelation.create({
-  //     data: {
-  //       formId: baseForm.id,
-  //       targetFormId: targetForm.id,
-  //       referenceComponentId: component.id,
-  //       createdBy: requestUser.id,
-  //     },
-  //   });
-  //
-  //   return {
-  //     relation,
-  //   };
-  // }
+  async validatePermission(
+    formId: number,
+    user: undefined | User,
+    permissionGrantType?: PermissionGrantType,
+  ): Promise<boolean> {
+    const form = await this.formModel.findByPk(formId, {
+      include: [{ model: HypeFormPermissions, include: [HypePermission] }],
+    });
+    if (user == null) {
+      form.permissions = form.permissions.filter(
+        (p) => p.permission.slug === 'public_user',
+      );
+      if (permissionGrantType != null) {
+        form.permissions = form.permissions.filter(
+          (p) => p.grant === permissionGrantType,
+        );
+      }
+      return form.permissions.length > 0;
+    }
+
+    if (user) {
+      const tempRequiredPermissions = [
+        ...form.permissions.map((p) => p.permission.slug),
+      ];
+      tempRequiredPermissions.push(`administrator`);
+      const hasPermission = await this.sequelize.modelManager.sequelize.query(
+        `SELECT ur.userId, ps.slug
+           FROM hype_permissions ps
+                  INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                  INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+           WHERE slug IN (:requiredPermissions)
+             AND userId = :userId
+          `,
+        {
+          replacements: {
+            requiredPermissions: tempRequiredPermissions,
+            userId: user.id,
+          },
+          type: QueryTypes.SELECT,
+        },
+      );
+      if (permissionGrantType != null) {
+        form.permissions = form.permissions.filter(
+          (p) => p.grant === permissionGrantType,
+        );
+      }
+      if (hasPermission.length > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

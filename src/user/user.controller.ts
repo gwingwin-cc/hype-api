@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { HypeRequest } from '../interfaces/request';
 
 @Controller('user')
 export class UserController {
@@ -18,25 +19,31 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Post('api-key')
-  async createApiKey(@Request() req): Promise<any> {
+  async createApiKey(@Request() req: HypeRequest) {
     return this.userService.createApiKey(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('api-key')
-  async getApiKey(@Request() req): Promise<any> {
+  async getApiKey(@Request() req: HypeRequest) {
     return this.userService.getUserApiKey(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('api-key/:key')
-  async revokeApiKey(@Request() req, @Param('key') key): Promise<any> {
+  async revokeApiKey(
+    @Request() req: HypeRequest,
+    @Param('key') key: string,
+  ): Promise<any> {
     return this.userService.revokeUserApiKey(req.user.id, key);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('password')
-  async changePassword(@Request() req, @Body() body: any): Promise<any> {
+  async changePassword(
+    @Request() req: HypeRequest,
+    @Body() body: any,
+  ): Promise<any> {
     const format = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
     const isUpperCase = (string) => /[A-Z]/.test(string);
     if (

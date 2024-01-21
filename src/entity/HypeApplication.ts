@@ -29,7 +29,7 @@ export class HypeApplication extends BaseSlugEntity {
   @Column({
     type: DataType.ENUM('APP', 'COMPONENT'),
   })
-  appType: 'APP' | 'COMPONENT';
+  appType: AppType;
 
   @Column(DataType.INTEGER)
   iconBlobId: number;
@@ -54,6 +54,11 @@ export class HypeApplication extends BaseSlugEntity {
     allowNull: true,
   })
   tags?: string;
+}
+export type AppType = keyof typeof AppTypeEnum;
+export enum AppTypeEnum {
+  APP = 'APP',
+  COMPONENT = 'COMPONENT',
 }
 
 @Table({

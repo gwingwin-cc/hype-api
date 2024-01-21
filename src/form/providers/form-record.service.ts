@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -10,11 +11,12 @@ import { Express } from 'express';
 import { Sequelize } from 'sequelize-typescript';
 import { InjectModel } from '@nestjs/sequelize';
 import {
+  FormLayoutStateEnum,
   HypeForm,
   HypeFormField,
-  HypeFormLayout,
   HypeFormPermissions,
-  HypeFormRelation,
+  HypePermission,
+  PermissionGrantTypeEnum,
   User,
 } from '../../entity';
 import { QueryTypes } from 'sequelize';
@@ -25,7 +27,13 @@ import xlsx from 'node-xlsx';
 import { FormService } from './form.service';
 import { BlobStorageService } from '../../blob-storage/blob-storage.service';
 import { InjectConnection } from 'nestjs-knex';
-import { FORM_RECORD_STATE, FORM_RECORD_TYPE } from '../dto/form-record.dto';
+import {
+  FormRecordEnvEnum,
+  FormRecordEnvType,
+  FormRecordStateEnum,
+  FormRecordStateType,
+  HypeBaseForm,
+} from '../../entity/HypeBaseForm';
 
 @Injectable()
 export class FormRecordService {
@@ -36,18 +44,10 @@ export class FormRecordService {
     private sequelize: Sequelize,
     @InjectModel(HypeForm)
     private formModel: typeof HypeForm,
-    @InjectModel(HypeFormField)
-    private formFieldModel: typeof HypeFormField,
-    @InjectModel(HypeFormLayout)
-    private formLayoutModel: typeof HypeFormLayout,
-    @InjectModel(HypeFormRelation)
-    private formRelationModel: typeof HypeFormRelation,
-    @InjectModel(HypeFormPermissions)
-    private formPermissions: typeof HypeFormPermissions,
     @InjectConnection() private readonly knex: Knex,
   ) {}
 
-  async findOneById(slug, fid): Promise<any> {
+  async findOneById(slug: string, fid: number): Promise<HypeBaseForm> {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     const sql = knexBuilder(tableSlug).where('id', '=', fid).toString();
@@ -55,7 +55,7 @@ export class FormRecordService {
     const rows = await this.sequelize.query(sql, {
       type: QueryTypes.SELECT,
     });
-    return rows[0];
+    return rows[0] as HypeBaseForm;
   }
 
   sandboxFunction = {
@@ -79,12 +79,12 @@ export class FormRecordService {
       if (form == null) {
         throw new Error('form not found:' + formSlug);
       }
-      return this.createRecord(
+      return this.saveRecord(
         user,
         form.id,
         data,
-        FORM_RECORD_STATE.DRAFT,
-        FORM_RECORD_TYPE.DEV,
+        FormRecordStateEnum.DRAFT,
+        FormRecordEnvEnum.DEV,
       );
     },
     getDataList: async ({ formSlug, options }) => {
@@ -101,6 +101,9 @@ export class FormRecordService {
     },
   };
 
+  /*
+  @deprecated
+   */
   async checkPermission(userId, formId) {
     const tempRequiredPermissions = ['administrator', 'form_management'];
     const hasAdminPermission = await this.sequelize.query(
@@ -139,15 +142,43 @@ export class FormRecordService {
     if (hasPermission.length > 0) {
       return true;
     }
-    throw new ForbiddenException();
+    throw new ForbiddenException('no permission add access form');
   }
 
   async createRecord(
+    createdBy: User,
+    formId: number,
+    data: any,
+    recordState: FormRecordStateType = FormRecordStateEnum.ACTIVE,
+    recordType: FormRecordEnvType = FormRecordEnvEnum.PROD,
+  ) {
+    const granted = await this.validatePermissionGranted(
+      formId,
+      null,
+      createdBy,
+      'create',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to createRecord.',
+      );
+    }
+    return {
+      id: await this.saveRecord(
+        createdBy,
+        formId,
+        data,
+        recordState,
+        recordType,
+      ),
+    };
+  }
+  async saveRecord(
     byUser: User,
     formId: number,
     data: any,
-    recordState: FORM_RECORD_STATE,
-    recordType: FORM_RECORD_TYPE,
+    recordState: FormRecordStateType,
+    recordType: FormRecordEnvType,
   ) {
     const form = await this.formModel.findByPk(formId, {
       include: [HypeFormField],
@@ -205,8 +236,8 @@ export class FormRecordService {
         recordType: recordType,
         createdAt: knexBuilder.fn.now(),
         updatedAt: knexBuilder.fn.now(),
-        createdBy: byUser.id,
-        updatedBy: byUser.id,
+        createdBy: byUser?.id ?? null,
+        updatedBy: byUser?.id ?? null,
         ...data,
       })
       .toString();
@@ -262,13 +293,12 @@ export class FormRecordService {
     formId: number,
     dataId: number,
     data: any,
-    recordState,
+    recordState: FormRecordStateType,
   ) {
     delete data.approval;
-    await this.checkPermission(user.id, formId);
+    // await this.checkPermission(user.id, formId);
     let checkedRecordState: 'DRAFT' | 'ACTIVE' | 'ACTIVE_LOCK' = 'DRAFT';
     switch (recordState) {
-      case '':
       case null:
         checkedRecordState = 'DRAFT';
         break;
@@ -376,7 +406,7 @@ export class FormRecordService {
         ...data,
         recordState: checkedRecordState,
         updatedAt: knexBuilder.fn.now(),
-        updatedBy: user.id,
+        updatedBy: user?.id ?? null,
       })
       .toString();
     Logger.log(`sql ${sql}`, 'sql');
@@ -401,7 +431,18 @@ export class FormRecordService {
     }
   }
 
-  async find(slug, options) {
+  async find(
+    slug: string,
+    options?: {
+      page?: number;
+      perPage?: number;
+      search?: string;
+      where?: any;
+      orWhere?: any;
+      sort?: any;
+      columnList?: Array<string>;
+    },
+  ) {
     const tableSlug = 'zz_' + slug;
     // const knexBuilder = knex({ client: 'mysql' });
     let sqlBuild = this.knex
@@ -453,18 +494,26 @@ export class FormRecordService {
     });
   }
 
-  async findOne(slug, options) {
+  async findOne(
+    slug: string,
+    options?: {
+      page?: number;
+      perPage?: number;
+      limit?: number;
+      search?: string;
+      where?: any;
+      orWhere?: any;
+      sort?: any;
+      columnList?: Array<string>;
+    },
+  ) {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     let sqlBuild = knexBuilder(tableSlug).select(
       `${tableSlug}.*`,
       'users.username as createdByUser',
     );
-    if (
-      options != null &&
-      options.columnList != null &&
-      options.search != null
-    ) {
+    if (options?.columnList != null && options.search != null) {
       sqlBuild.where((builder) => {
         for (const cl of options.columnList) {
           builder.orWhere(cl, 'like', `%${options.search}%`);
@@ -472,11 +521,11 @@ export class FormRecordService {
         return builder;
       });
     }
-    if (options.where != null) {
+    if (options?.where != null) {
       sqlBuild.andWhere(options.where);
     }
     sqlBuild.leftJoin('users', 'users.id', `${tableSlug}.createdBy`);
-    if (options.sort != null) {
+    if (options?.sort != null) {
       sqlBuild = sqlBuild.orderBy(options.sort);
     }
     const sql = sqlBuild.limit(options.limit ?? 1).toString();
@@ -491,7 +540,7 @@ export class FormRecordService {
     return rows;
   }
 
-  async count(slug, where) {
+  async count(slug: string, where: any) {
     const tableSlug = 'zz_' + slug;
     const knexBuilder = knex({ client: 'mysql' });
     const sql = knexBuilder(`${tableSlug} as ${slug}`)
@@ -507,7 +556,7 @@ export class FormRecordService {
    * @param user
    * @param file
    */
-  async saveBlob(user, file: Express.Multer.File) {
+  async saveBlob(user: User, file: Express.Multer.File) {
     return this.blobService.createBlob(user, file);
   }
 
@@ -628,7 +677,8 @@ export class FormRecordService {
     await this.checkPermission(user.id, formId);
     const form = await this.formService.getForm({
       id: formId,
-      layoutState: 'ACTIVE',
+      layoutState: FormLayoutStateEnum.ACTIVE,
+      excludeDeleteField: true,
     });
 
     const tableSlug = 'zz_' + form.slug;
@@ -644,5 +694,108 @@ export class FormRecordService {
     await this.sequelize.query(sql, {
       type: QueryTypes.UPDATE,
     });
+  }
+
+  async validatePermissionGranted(
+    formId: number,
+    recordId: number | null,
+    user: undefined | User,
+    action: 'create' | 'update' | 'delete' | 'read',
+  ): Promise<boolean> {
+    const form = await this.formModel.findByPk(formId, {
+      include: [{ model: HypeFormPermissions, include: [HypePermission] }],
+    });
+    const matchGrants = [];
+    if (user == null) {
+      form.permissions = form.permissions.filter(
+        (p) => p.permission.slug === 'public_user',
+      );
+    }
+
+    if (user) {
+      const tempRequiredPermissions = [
+        ...form.permissions.map((p) => p.permission.slug),
+      ];
+      tempRequiredPermissions.push(`administrator`);
+      const hasPermission = await this.sequelize.modelManager.sequelize.query<{
+        slug: string;
+      }>(
+        `SELECT ps.slug
+           FROM hype_permissions ps
+                  INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                  INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+           WHERE slug IN (:requiredPermissions)
+             AND userId = :userId
+          `,
+        {
+          replacements: {
+            requiredPermissions: tempRequiredPermissions,
+            userId: user.id,
+          },
+          type: QueryTypes.SELECT,
+        },
+      );
+      if (hasPermission.find((hp) => hp.slug == 'administrator') != null) {
+        return true;
+      }
+      form.permissions = form.permissions.filter(
+        (p) => hasPermission.find((hp) => hp.slug == p.permission.slug) != null,
+      );
+    }
+
+    if (action == 'read') {
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.READ_ONLY_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL,
+        ],
+      );
+      if (recordId != null && user != null) {
+        const record = await this.findOneById(form.slug, recordId);
+        if (record.createdBy == user.id) {
+          matchGrants.push(PermissionGrantTypeEnum.READ_EDIT);
+          matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+        }
+      }
+    }
+
+    if (action == 'update') {
+      // find recordId
+      const record = await this.findOneById(form.slug, recordId);
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+          PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL,
+        ],
+      );
+      if (record.createdBy == user?.id) {
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT);
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+      }
+    }
+    if (action == 'delete') {
+      // find recordId
+      const record = await this.findOneById(form.slug, recordId);
+      matchGrants.push(...[PermissionGrantTypeEnum.READ_EDIT_DELETE_ALL]);
+      if (record.createdBy == user.id) {
+        matchGrants.push(PermissionGrantTypeEnum.READ_EDIT_DELETE);
+      }
+    }
+    if (action == 'create') {
+      // find recordId
+      matchGrants.push(
+        ...[
+          PermissionGrantTypeEnum.CREATE,
+          PermissionGrantTypeEnum.READ_EDIT,
+          PermissionGrantTypeEnum.READ_EDIT_ALL,
+        ],
+      );
+    }
+
+    const permissionGranted = form.permissions.filter(
+      (p) => matchGrants.indexOf(p.grant) > -1,
+    );
+    return permissionGranted.length > 0;
   }
 }

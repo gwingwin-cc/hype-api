@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpException,
   HttpStatus,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -16,8 +18,10 @@ import { Permissions } from '../auth/permission.decorator';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { ScriptService } from './script.service';
 import { InjectModel } from '@nestjs/sequelize';
-import { HypeScript, User } from '../entity';
+import { HypeScript, HypeScriptPermissions, User } from '../entity';
 import { HypeAuthGuard } from '../hype-auth.guard';
+import { HypeRequest } from '../interfaces/request';
+import { UpdaterFormPermissionDto } from '../form/dto/form.dto';
 
 @Controller('scripts')
 @UseGuards(HypeAuthGuard, PermissionGuard)
@@ -25,29 +29,75 @@ export class ScriptController {
   constructor(
     @InjectModel(HypeScript)
     private scriptModel: typeof HypeScript,
+    @InjectModel(HypeScriptPermissions)
+    private scriptPermissionModel: typeof HypeScriptPermissions,
     public serviceScript: ScriptService,
   ) {}
 
-  @Post('exec-sql-script')
-  async execScript(@Request() req, @Body() body: any) {
-    return this.serviceScript.batchExecScriptSQL(body.slug, body.params);
-  }
-
-  @Post('exec-sql-script-by-id')
-  async execScriptById(@Request() req, @Body() body: { id; params }) {
-    try {
-      return this.serviceScript.execScriptSQL(body.id, body.params);
-    } catch (e) {
-      throw new HttpException(
-        'execScriptById error: ' + e.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+  @Permissions('script_management')
+  @Patch(':id/permissions')
+  async updatePermission(
+    @Request() req: HypeRequest,
+    @Param('id', ParseIntPipe) scriptId: number,
+    @Body() body: UpdaterFormPermissionDto,
+  ) {
+    const forAdd = [];
+    const forRemove = [];
+    const existPermission = await this.scriptPermissionModel.findAll({
+      where: {
+        scriptId: scriptId,
+        deletedAt: null,
+      },
+    });
+    Logger.log('updateScriptPermission', body);
+    const permissionToApply = body.permissions;
+    for (const pa of permissionToApply.filter((p) => p.val === true)) {
+      if (existPermission.find((rp) => rp.permissionId == pa.id) == null) {
+        forAdd.push({
+          permissionId: pa.id,
+          scriptId: scriptId,
+          createdBy: req.user.id,
+        });
+      }
     }
+
+    for (const pa of permissionToApply.filter((p) => p.val === false)) {
+      if (existPermission.find((rp) => rp.permissionId == pa.id) != null) {
+        forRemove.push(pa.id);
+      }
+    }
+
+    const removed = await this.scriptPermissionModel.update(
+      {
+        deletedAt: new Date(),
+        deletedBy: req.user.id,
+      },
+      {
+        where: {
+          permissionId: forRemove,
+          scriptId: scriptId,
+        },
+      },
+    );
+
+    const added = await this.scriptPermissionModel.bulkCreate(forAdd);
+    return { added, removed };
   }
 
-  @Post('exec-sql-script-by-slug')
-  async execScriptBySlug(@Request() req, @Body() body: { slug; params }) {
+  @Post('exec-sql-script')
+  @Permissions('api_management')
+  @UseGuards(PermissionGuard)
+  async execScriptBySlug(
+    @Request() req: HypeRequest,
+    @Body() body: { slug: string; params: object },
+  ) {
     try {
+      const result = await this.serviceScript.getScript({ slug: body.slug });
+      if (result == null) {
+        throw new BadRequestException('Script not found');
+      }
+      await this.serviceScript.checkPermission(req.user.id, result.id);
+      // check permission
       return this.serviceScript.execScriptSQLSlug(body.slug, body.params);
     } catch (e) {
       throw new HttpException(
@@ -97,13 +147,13 @@ export class ScriptController {
 
   @Post('')
   @Permissions('api_management')
-  async createScript(@Request() req, @Body() body: any) {
+  async createScript(@Request() req: HypeRequest, @Body() body: any) {
     return this.serviceScript.createScript(req.user, body);
   }
 
   @Get(':id')
   @Permissions('api_management')
-  async getScript(@Request() req, @Param('id') id: any) {
+  async getScript(@Param('id') id: any) {
     return this.serviceScript.getScript({
       id: parseInt(id),
     });

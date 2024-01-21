@@ -30,5 +30,12 @@ export class HypeScript extends BaseSlugEntity {
     type: DataType.ENUM('DRAFT', 'ACTIVE', 'CANCEL', 'OBSOLETE'),
     allowNull: false,
   })
-  state: 'ACTIVE' | 'DRAFT' | 'OBSOLETE';
+  state: ScriptStateEnum;
+}
+
+export enum ScriptStateEnum {
+  ACTIVE = 'ACTIVE',
+  DRAFT = 'DRAFT',
+  CANCEL = 'CANCEL',
+  OBSOLETE = 'OBSOLETE',
 }

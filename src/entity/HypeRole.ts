@@ -33,13 +33,19 @@ export class HypeRole extends BaseSlugEntity {
     type: DataType.STRING,
     defaultValue: 'normal',
   })
-  roleType: string;
+  roleType: RoleType;
 
   @BelongsToMany(() => HypePermission, () => RolePermissions)
   permissions: HypePermission[];
 
   @BelongsToMany(() => User, () => UserRoles)
   roleUsers: User[];
+}
+
+export type RoleType = keyof typeof RoleTypeEnum;
+export enum RoleTypeEnum {
+  normal = 'normal',
+  core = 'core',
 }
 
 @Table({
@@ -49,11 +55,17 @@ export class HypeRole extends BaseSlugEntity {
 })
 export class HypePermission extends BaseSlugEntity {
   @Column({ type: DataType.STRING, defaultValue: 'normal' })
-  permissionType: 'normal' | 'core';
+  permissionType: PermissionType;
 
   @BelongsToMany(() => HypeRole, () => RolePermissions)
   roles: HypeRole[];
 
   @BelongsToMany(() => HypeApplication, () => HypeApplicationPermissions)
   appPermission: HypeApplication[];
+}
+
+export type PermissionType = keyof typeof PermissionTypeEnum;
+export enum PermissionTypeEnum {
+  normal = 'normal',
+  core = 'core',
 }

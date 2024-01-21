@@ -1,31 +1,27 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   HypePermission,
   HypeRole,
   RolePermissions,
   User,
   UserRoles,
+  UserStatusEnum,
+  UserStatusType,
 } from '../entity';
 import { InjectModel } from '@nestjs/sequelize';
 import { ApplicationService } from '../application/application.service';
 import { UserService } from '../user/user.service';
 import { FormRecordService } from '../form/providers/form-record.service';
 import { FormService } from '../form/providers/form.service';
-import {
-  FORM_RECORD_STATE,
-  FORM_RECORD_TYPE,
-} from '../form/dto/form-record.dto';
+import { FormRecordStateEnum } from '../entity/HypeBaseForm';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class AdminService {
   constructor(
     private userService: UserService,
     private formService: FormService,
     private formDataService: FormRecordService,
     private applicationService: ApplicationService,
-    @Inject(REQUEST) private readonly request: Request,
     @InjectModel(HypeRole)
     private roleModel: typeof HypeRole,
     @InjectModel(HypePermission)
@@ -36,6 +32,13 @@ export class AdminService {
     private rolePermissionModel: typeof RolePermissions,
   ) {}
 
+  async onModuleInit() {
+    const user = await this.userService.findOne({
+      id: 1,
+    });
+    await this.initProject(user);
+  }
+
   async getRole(id: number): Promise<HypeRole> {
     return this.roleModel.findOne({
       where: {
@@ -44,53 +47,28 @@ export class AdminService {
       include: [HypePermission],
     });
   }
-  //
-  // async roles(params: {
-  //   skip?: number;
-  //   take?: number;
-  //   cursor?: Prisma.HerpRoleWhereUniqueInput;
-  //   where?: Prisma.HerpRoleWhereInput;
-  //   orderBy?: Prisma.HerpRoleOrderByWithRelationInput;
-  // }): Promise<HerpRole[]> {
-  //   const { skip, take, cursor, where, orderBy } = params;
-  //   return this.prisma.herpRole.findMany({
-  //     skip,
-  //     take,
-  //     cursor,
-  //     where,
-  //     orderBy,
-  //   });
-  // }
-  //
+
   async creatRole(data: Partial<HypeRole>): Promise<HypeRole> {
     return await this.roleModel.create(data);
   }
 
   async createUser(
-    byUser,
-    { password, username, email, status },
+    byUser: User,
+    payload: {
+      username: string;
+      email: string;
+      password: string;
+      status: UserStatusType;
+    },
   ): Promise<any> {
+    const { username, email, password, status } = payload;
     const hash = await this.userService.hashPassword(password);
-    const appSetting = await this.formDataService.findOne('app_setting', {});
-    const profileForm = await this.formService.getFormOnly({
-      slug: appSetting['main_profile'],
-    });
-    const user = await this.userService.createUser({
+    return await this.userService.createUser({
       passwordHash: hash,
       username: username,
       email: email,
-      status: status,
+      status: status ?? UserStatusEnum.active,
     });
-    await this.formDataService.createRecord(
-      byUser,
-      profileForm.id,
-      {
-        user_id: user.id,
-      },
-      FORM_RECORD_STATE.ACTIVE,
-      FORM_RECORD_TYPE.PROD,
-    );
-    return user;
   }
 
   async createPermission(
@@ -127,40 +105,6 @@ export class AdminService {
     );
   }
 
-  // async assignRole(
-  //   requestUser: User,
-  //   userId: number,
-  //   roleId: number,
-  // ): Promise<HerpUserMapRole> {
-  //   const user = await this.prisma.user.findUnique({ where: { id: userId } });
-  //   const role = await this.prisma.herpRole.findUnique({
-  //     where: { id: roleId },
-  //   });
-  //   if (role == null) {
-  //     throw new Error('this role not exist');
-  //   }
-  //   const assignedRole = await this.prisma.herpUserMapRole.findFirst({
-  //     where: { roleId, userId },
-  //   });
-  //   if (assignedRole != null) {
-  //     throw new Error('this role already assigned');
-  //   }
-  //
-  //   return this.prisma.herpUserMapRole.create({
-  //     data: { userId: user.id, roleId: role.id, createdBy: requestUser.id },
-  //   });
-  // }
-  //
-  // async unassignRole(
-  //   requestUser: User,
-  //   userId: number,
-  //   roleId: number,
-  // ): Promise<any> {
-  //   return this.prisma.herpUserMapRole.deleteMany({
-  //     where: { roleId, userId },
-  //   });
-  // }
-  //
   async getAssignRole(userId: number): Promise<Array<UserRoles>> {
     return await this.userRolesModel.findAll({
       where: { userId },
@@ -170,7 +114,7 @@ export class AdminService {
   async applyUserRoles(
     byUser: User,
     userId: number,
-    roleToApply: { id; val }[],
+    roleToApply: { id: number; val: boolean }[],
   ) {
     const forAdd = [];
     const forRemove = [];
@@ -261,6 +205,13 @@ export class AdminService {
   }
 
   async initProject(initUser: User) {
+    const settingForm = await this.formService.getFormOnly({
+      slug: 'app_setting',
+      state: FormRecordStateEnum.ACTIVE,
+    });
+    Logger.log(`settingForm exist ${settingForm != null}`);
+    if (settingForm != null) return;
+    Logger.log(`start initProject`);
     const { form } = await this.formService.createForm(initUser, {
       name: 'App Setting',
       slug: 'app_setting',
@@ -327,15 +278,5 @@ export class AdminService {
       'login_image',
       'loginImage',
     );
-
-    await this.applicationService.createApp(initUser, {
-      name: 'Main',
-      slug: 'main',
-      appType: 'APP',
-    });
-
-    await this.applicationService.publishLayout(initUser, {
-      id: 1,
-    });
   }
 }

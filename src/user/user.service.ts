@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User, HypeRole, UserRoles, HypePermission } from '../entity';
 import { hash } from 'argon2';
-import { Sequelize } from 'sequelize/types/sequelize';
 import { UserApi } from '../entity';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -18,16 +18,12 @@ export class UserService {
     private roleModel: typeof HypeRole,
   ) {}
 
-  getSequelize(): Sequelize {
-    return this.userModel.sequelize;
-  }
-
   async findOne(userWhereUniqueInput: any): Promise<User | null> {
     return this.userModel.findOne({
       where: {
         ...userWhereUniqueInput,
       },
-      include: [HypeRole],
+      include: [{ model: HypeRole, attributes: ['id', 'name', 'slug'] }],
     });
   }
 
@@ -35,7 +31,7 @@ export class UserService {
     skip?: number;
     take?: number;
     where?: any;
-  }): Promise<any[]> {
+  }): Promise<User[]> {
     const { skip, take, where } = params;
     return this.userModel.findAll({
       where: {
@@ -43,7 +39,7 @@ export class UserService {
       },
       offset: skip,
       limit: take,
-      order: [['id', 'DESC']],
+      order: [['id', 'ASC']],
       attributes: { exclude: ['passwordHash'] },
       include: [{ model: HypeRole, attributes: ['id', 'name', 'slug'] }],
     });
@@ -74,7 +70,7 @@ export class UserService {
     return user.update(data);
   }
 
-  async deleteUser(byUser, id): Promise<User> {
+  async deleteUser(byUser: User, id: number): Promise<User> {
     const u = await this.userModel.findByPk(id);
     return await u.update({
       deletedAt: new Date(),
@@ -82,7 +78,7 @@ export class UserService {
     });
   }
 
-  async revokeUserApiKey(userId, key) {
+  async revokeUserApiKey(userId: number, key: string) {
     const u = await this.userApiModel.findByPk(key);
     return await u.update({
       deletedAt: new Date(),
@@ -90,15 +86,32 @@ export class UserService {
     });
   }
 
-  async createApiKey(userId): Promise<UserApi> {
+  async createApiKey(userId: number): Promise<UserApi> {
     const newUserApi = new UserApi();
+    newUserApi.id = randomUUID();
     newUserApi.userId = userId;
     newUserApi.createdBy = userId;
     await newUserApi.save();
     return newUserApi;
   }
 
-  async getUserApiKey(userId): Promise<UserApi> {
+  async deleteApiKey(key: string) {
+    return this.userApiModel.destroy({
+      where: {
+        id: key,
+      },
+    });
+  }
+
+  async getUserByApiKey(id: string): Promise<User> {
+    const apiEntity = await this.userApiModel.findOne({
+      where: { id: id },
+      include: [User],
+    });
+    return apiEntity.user;
+  }
+
+  async getUserApiKey(userId: number): Promise<UserApi> {
     return await this.userApiModel.findOne({
       where: { userId: userId },
     });
@@ -114,18 +127,8 @@ export class UserService {
     return this.userModel.findOne({ where: { username } });
   }
 
-  async all(): Promise<any> {
-    return this.userModel.findAll({
-      where: {
-        deletedAt: null,
-        status: 'active',
-      },
-      attributes: ['id', 'email', 'username'],
-    });
-  }
-
-  async getUserRoles(user): Promise<Array<HypeRole>> {
-    const newUser = await this.userModel.findByPk(user.id, {
+  async getUserRoles(id: number): Promise<Array<HypeRole>> {
+    const newUser = await this.userModel.findByPk(id, {
       include: [{ model: HypeRole, include: [HypePermission] }],
     });
     return newUser.userRoles;

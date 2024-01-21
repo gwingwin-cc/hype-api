@@ -36,7 +36,7 @@ export class HypeForm extends BaseSlugEntity {
     defaultValue: 'ACTIVE',
     type: DataType.ENUM('ACTIVE', 'DRAFT', 'CANCEL', 'OBSOLETE'),
   })
-  state: 'ACTIVE' | 'CANCEL' | 'OBSOLETE' | string;
+  state: FormStateType;
 
   @Column({
     type: DataType.JSON,
@@ -72,6 +72,14 @@ export class HypeForm extends BaseSlugEntity {
   updatedByUser: User;
 }
 
+export type FormStateType = keyof typeof FormStateEnum;
+export enum FormStateEnum {
+  ACTIVE = 'ACTIVE',
+  DRAFT = 'DRAFT',
+  CANCEL = 'CANCEL',
+  OBSOLETE = 'OBSOLETE',
+}
+
 @Table({
   timestamps: true,
   paranoid: true,
@@ -89,13 +97,13 @@ export class HypeFormLayout extends BaseEntity {
   layout: string;
 
   @Column(DataType.ENUM('DRAFT', 'ACTIVE', 'CANCEL', 'OBSOLETE'))
-  state: 'DRAFT' | 'ACTIVE' | 'CANCEL' | 'OBSOLETE';
+  state: FormLayoutStateType;
 
   @Column(DataType.BOOLEAN)
   enableDraftMode: boolean;
 
   @Column(DataType.ENUM('ALWAYS', 'BEFORE_ACTIVE', 'BEFORE_ACTIVELOCK'))
-  requireCheckMode: 'ALWAYS';
+  requireCheckMode: FormLayoutRequireCheckModeType;
 
   @Column(DataType.INTEGER)
   iconBlobId: number;
@@ -112,4 +120,20 @@ export class HypeFormLayout extends BaseEntity {
   @ForeignKey(() => User)
   @Column
   createdBy: number;
+}
+
+export type FormLayoutStateType = keyof typeof FormLayoutStateEnum;
+export enum FormLayoutStateEnum {
+  ACTIVE = 'ACTIVE',
+  DRAFT = 'DRAFT',
+  CANCEL = 'CANCEL',
+  OBSOLETE = 'OBSOLETE',
+}
+
+export type FormLayoutRequireCheckModeType =
+  keyof typeof FormLayoutRequireCheckModeEnum;
+export enum FormLayoutRequireCheckModeEnum {
+  ALWAYS = 'ALWAYS',
+  BEFORE_ACTIVE = 'BEFORE_ACTIVE',
+  BEFORE_ACTIVELOCK = 'BEFORE_ACTIVELOCK',
 }

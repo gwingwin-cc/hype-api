@@ -46,7 +46,7 @@ export class User extends Model {
     defaultValue: 'active',
     type: DataType.STRING,
   })
-  status: string;
+  status: UserStatusType;
 
   @CreatedAt
   createdAt: Date;
@@ -68,9 +68,13 @@ export class User extends Model {
 
   @BelongsToMany(() => HypeRole, () => UserRoles)
   userRoles: HypeRole[];
+}
 
-  // @HasMany(() => AccessToken)
-  // accessTokens: AccessToken[];
+export type UserStatusType = keyof typeof UserStatusEnum;
+export enum UserStatusEnum {
+  active = 'active',
+  inactive = 'inactive',
+  deleted = 'deleted',
 }
 
 @Table({

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Request,
@@ -10,22 +11,21 @@ import {
 import { FormService } from '../providers/form.service';
 import { Permissions } from '../../auth/permission.decorator';
 import { PermissionGuard } from '../../auth/guard/permission.guard';
-import { InjectModel } from '@nestjs/sequelize';
-import { HypeForm } from '../../entity';
 import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeRequest } from '../../interfaces/request';
+import { UpdateFormLayoutRequest } from '../dto/form.dto';
 
 @Controller('form-layouts')
 @UseGuards(HypeAuthGuard, PermissionGuard)
 export class FormLayoutController {
-  constructor(
-    @InjectModel(HypeForm)
-    private formModel: typeof HypeForm,
-    private formService: FormService,
-  ) {}
+  constructor(private formService: FormService) {}
 
   @Permissions('form_management')
   @Post(':id/publish')
-  async publishLayout(@Request() req, @Param('id') layoutId) {
+  async publishLayout(
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) layoutId: number,
+  ) {
     await this.formService.publishLayout(req.user, {
       id: layoutId,
     });
@@ -34,17 +34,10 @@ export class FormLayoutController {
   @Permissions('form_management')
   @Patch(':id')
   async updateLayout(
-    @Request() req,
-    @Param('id') layoutId,
+    @Request() req: HypeRequest,
+    @Param('id', new ParseIntPipe()) layoutId: number,
     @Body()
-    body: {
-      layout: string;
-      script: string;
-      options: object | any;
-      approval: Array<any>;
-      enableDraftMode: 0 | 1 | boolean;
-      requireCheckMode: 'ALWAYS' | 'BEFORE_ACTIVE' | 'BEFORE_ACTIVELOCK';
-    },
+    body: UpdateFormLayoutRequest,
   ) {
     return await this.formService.updateLayout(req.user, layoutId, {
       layout: body.layout,

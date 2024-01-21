@@ -1,8 +1,14 @@
 import { BaseEntity } from './BaseEntity';
 import { Column, DataType, Table } from 'sequelize-typescript';
 
-type enums = 'DRAFT' | 'ACTIVE' | 'ACTIVE_LOCK' | 'CANCEL' | 'ARCHIVED';
-
+export type FormRecordStateType = keyof typeof FormRecordStateEnum;
+export enum FormRecordStateEnum {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  ACTIVE_LOCK = 'ACTIVE_LOCK',
+  CANCEL = 'CANCEL',
+  ARCHIVED = 'ARCHIVED',
+}
 @Table({
   timestamps: true,
   paranoid: true,
@@ -10,10 +16,19 @@ type enums = 'DRAFT' | 'ACTIVE' | 'ACTIVE_LOCK' | 'CANCEL' | 'ARCHIVED';
 })
 export class HypeBaseForm extends BaseEntity {
   @Column(DataType.ENUM('DRAFT', 'ACTIVE', 'ACTIVE_LOCK', 'CANCEL', 'ARCHIVED'))
-  recordState: enums;
+  recordState: FormRecordStateType;
+
+  @Column(DataType.ENUM('DEV', 'PROD'))
+  recordType: FormRecordEnvType;
 
   @Column(DataType.STRING)
   errors: string;
 
   [key: string]: any;
+}
+
+export type FormRecordEnvType = keyof typeof FormRecordEnvEnum;
+export enum FormRecordEnvEnum {
+  DEV = 'DEV',
+  PROD = 'PROD',
 }
