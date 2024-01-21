@@ -5,6 +5,7 @@ import {
   RolePermissions,
   User,
   UserRoles,
+  UserStatusEnum,
   UserStatusType,
 } from '../entity';
 import { InjectModel } from '@nestjs/sequelize';
@@ -12,7 +13,7 @@ import { ApplicationService } from '../application/application.service';
 import { UserService } from '../user/user.service';
 import { FormRecordService } from '../form/providers/form-record.service';
 import { FormService } from '../form/providers/form.service';
-import { FormRecordEnvEnum, FormRecordStateEnum } from '../entity/HypeBaseForm';
+import { FormRecordStateEnum } from '../entity/HypeBaseForm';
 
 @Injectable()
 export class AdminService {
@@ -62,27 +63,12 @@ export class AdminService {
   ): Promise<any> {
     const { username, email, password, status } = payload;
     const hash = await this.userService.hashPassword(password);
-    const appSetting = await this.formDataService.findOne('app_setting');
-    const profileForm = await this.formService.getFormOnly({
-      slug: appSetting['main_profile'],
-      state: FormRecordStateEnum.ACTIVE,
-    });
-    const user = await this.userService.createUser({
+    return await this.userService.createUser({
       passwordHash: hash,
       username: username,
       email: email,
-      status: status,
+      status: status ?? UserStatusEnum.active,
     });
-    await this.formDataService.saveRecord(
-      byUser,
-      profileForm.id,
-      {
-        user_id: user.id,
-      },
-      FormRecordStateEnum.ACTIVE,
-      FormRecordEnvEnum.PROD,
-    );
-    return user;
   }
 
   async createPermission(
