@@ -14,7 +14,9 @@ import { HypeRequest } from '../../interfaces/request';
 import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
 import { FormLayoutStateType } from '../../entity';
 import { FormRecordStateEnum } from '../../entity/HypeBaseForm';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Form - Public')
 @Controller('forms')
 export class FormController {
   constructor(private formService: FormService) {}

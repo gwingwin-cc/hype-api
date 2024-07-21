@@ -12,6 +12,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { InjectModel } from '@nestjs/sequelize';
 import {
   FormLayoutStateEnum,
+  FormStateEnum,
   HypeForm,
   HypeFormField,
   HypeFormPermissions,
@@ -46,6 +47,33 @@ export class FormRecordService {
     private formModel: typeof HypeForm,
     @InjectConnection() private readonly knex: Knex,
   ) {}
+
+  async formGrant(formRef: string, recordId: number | null, user: User) {
+    const firstLetter = formRef[0];
+    let form: HypeForm;
+    if (/[a-zA-Z]/.test(firstLetter)) {
+      form = await this.formService.getFormOnly({
+        slug: formRef,
+        state: FormStateEnum.ACTIVE,
+      });
+    } else {
+      form = await this.formService.getFormOnly({
+        id: parseInt(formRef),
+        state: FormStateEnum.ACTIVE,
+      });
+    }
+
+    const granted = await this.validatePermissionGranted(
+      form.id,
+      recordId,
+      user,
+      'read',
+    );
+    if (!granted) {
+      throw new BadRequestException('You do not have permission to access.');
+    }
+    return form;
+  }
 
   async findOneById(slug: string, fid: number): Promise<HypeBaseForm> {
     const tableSlug = 'zz_' + slug;

@@ -38,7 +38,10 @@ import {
   UpdaterFormPermissionDto,
 } from '../dto/form.dto';
 import { rethrow } from '@nestjs/core/helpers/rethrow';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Form - Management')
+@ApiBearerAuth()
 @Controller('forms')
 @UseGuards(HypeAuthGuard, PermissionGuard)
 export class FormManageController {

@@ -22,7 +22,21 @@ import {
   AdminCreateRoleRequest,
 } from './role-permission.dto';
 import { AdminAssignUserRoleRequest } from './role-permission.dto';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiSpecAssignPermission,
+  ApiSpecAssignRole,
+  ApiSpecCreatePermission,
+  ApiSpecCreateRole,
+  ApiSpecDeletePermission,
+  ApiSpecDeleteRole,
+  ApiSpecGetAssignRole,
+  ApiSpecGetPermissions,
+  ApiSpecGetRole,
+  ApiSpecGetRoles,
+} from './role-permission.api-spec';
 
+@ApiTags('Admin - Authorization Manage')
 @Controller('admin')
 export class RolePermissionController {
   constructor(
@@ -33,6 +47,7 @@ export class RolePermissionController {
     private hypeRole: typeof HypeRole,
   ) {}
 
+  @ApiSpecGetRoles()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Get('roles')
@@ -52,6 +67,7 @@ export class RolePermissionController {
     };
   }
 
+  @ApiSpecGetRole()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Get('roles/:id')
@@ -59,6 +75,7 @@ export class RolePermissionController {
     return this.adminService.getRole(parseInt(id));
   }
 
+  @ApiSpecCreateRole()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Post('roles')
@@ -71,6 +88,7 @@ export class RolePermissionController {
     });
   }
 
+  @ApiSpecDeleteRole()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Delete('role/:id')
@@ -80,6 +98,7 @@ export class RolePermissionController {
     });
   }
 
+  @ApiSpecGetAssignRole()
   @Get('assign-role/:uid')
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
@@ -87,6 +106,7 @@ export class RolePermissionController {
     return this.adminService.getAssignRole(parseInt(id));
   }
 
+  @ApiSpecGetPermissions()
   @UseGuards(JwtAuthGuard)
   @Get('permissions')
   async getPermissionList(): Promise<{
@@ -110,6 +130,7 @@ export class RolePermissionController {
     };
   }
 
+  @ApiSpecCreatePermission()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Post('permissions')
@@ -120,6 +141,7 @@ export class RolePermissionController {
     });
   }
 
+  @ApiSpecDeletePermission()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Delete('permissions/:id')
@@ -129,6 +151,7 @@ export class RolePermissionController {
     });
   }
 
+  @ApiSpecAssignPermission()
   @UseGuards(PermissionGuard)
   @Permissions('permission_management')
   @Patch('roles/:id/assign-permissions')
@@ -148,6 +171,7 @@ export class RolePermissionController {
     }
   }
 
+  @ApiSpecAssignRole()
   @UseGuards(PermissionGuard)
   @Permissions('user_management')
   @Patch('user-roles/:uid')

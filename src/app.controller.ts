@@ -14,7 +14,9 @@ import { Sequelize } from 'sequelize-typescript';
 import { FormRecordService } from './form/providers/form-record.service';
 import { FormService } from './form/providers/form.service';
 import { FormRecordStateEnum } from './entity/HypeBaseForm';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Public - Main')
 @Controller()
 export class AppController {
   constructor(
@@ -23,83 +25,6 @@ export class AppController {
     private sequelize: Sequelize,
     private readonly formService: FormService,
   ) {}
-
-  @UseGuards(JwtAuthGuard)
-  @Post('user/noti')
-  async getNotification(@Request() req): Promise<any> {
-    let ring = false;
-    const profileQuery = await this.sequelize.query(
-      `
-                SELECT *
-                FROM zz_profile
-                WHERE user_id = ${req.user.id}
-                  AND deletedAt is null
-                LIMIT 1
-            `,
-      {
-        type: QueryTypes.SELECT,
-      },
-    );
-    const profile = profileQuery[0];
-
-    const notiList = await this.sequelize.query(
-      `
-                SELECT *
-                FROM zz_notify
-                WHERE user_id = ${req.user.id}
-                ORDER BY createdAt DESC
-                LIMIT 10
-            `,
-      {
-        type: QueryTypes.SELECT,
-      },
-    );
-
-    if (notiList.length > 0) {
-      if (profile['latest_noti'] < notiList[0]['createdAt']) {
-        await this.sequelize.query(
-          `
-                        UPDATE zz_profile
-                        SET latest_noti = NOW()
-                        WHERE user_id = ${req.user.id}
-                    `,
-          {
-            type: QueryTypes.UPDATE,
-          },
-        );
-        ring = true;
-      }
-    }
-
-    return {
-      ring,
-      notiList,
-    };
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('user/info')
-  async Info(@Body() body, @Request() req) {
-    const systemUser = await this.usersService.findOne({ id: req.user.id });
-    const appSetting = await this.formDataService.findOne('app_setting', {});
-    const profileForm = await this.formService.getFormOnly({
-      slug: appSetting['main_profile'],
-      state: FormRecordStateEnum.ACTIVE,
-    });
-
-    const profile = await this.formDataService.findOne(profileForm.slug, {
-      where: { user_id: req.user.id },
-    });
-
-    if (systemUser == null || profile == null) {
-      throw new HttpException('profile not found.', 404);
-    }
-
-    profile['avatarColor'] = 'light-primary';
-    profile['email'] = systemUser.email;
-
-    return { systemUser, profile, profileForm: profileForm };
-  }
 
   @Get('app-info')
   async getAppInfo(): Promise<object> {

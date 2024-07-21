@@ -9,7 +9,7 @@ import { BaseSlugEntity } from './BaseSlugEntity';
 import { BaseEntity } from './BaseEntity';
 import { User, UserRoles } from './User';
 import { HypeApplication, HypeApplicationPermissions } from './HypeApplication';
-
+import { ApiProperty } from '@nestjs/swagger';
 @Table({
   timestamps: true,
   tableName: 'hype_role_permissions',

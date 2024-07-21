@@ -1,0 +1,18 @@
+{
+  "development": {
+    "username": "root",
+    "password": "0123",
+    "database": "hype_migrate",
+    "host": "localhost",
+    "port": 3307,
+    "dialect": "mariadb"
+  },
+  "production": {
+    "username": "root",
+    "password": "0123",
+    "database": "hype_project",
+    "host": "localhost",
+    "port": 3306,
+    "dialect": "mariadb"
+  }
+}

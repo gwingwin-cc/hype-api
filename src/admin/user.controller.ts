@@ -19,7 +19,9 @@ import { PermissionGuard } from '../auth/guard/permission.guard';
 import { Permissions } from '../auth/permission.decorator';
 import { InjectModel } from '@nestjs/sequelize';
 import { HypeRequest } from '../interfaces/request';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Admin - User Manage')
 @Controller('admin')
 export class UserController {
   constructor(

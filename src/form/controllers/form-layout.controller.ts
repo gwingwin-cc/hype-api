@@ -14,7 +14,10 @@ import { PermissionGuard } from '../../auth/guard/permission.guard';
 import { HypeAuthGuard } from '../../hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
 import { UpdateFormLayoutRequest } from '../dto/form.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Form - Management')
+@ApiBearerAuth()
 @Controller('form-layouts')
 @UseGuards(HypeAuthGuard, PermissionGuard)
 export class FormLayoutController {

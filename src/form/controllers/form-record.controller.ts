@@ -4,7 +4,10 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
+  HttpException,
+  HttpStatus,
   Logger,
   Param,
   ParseIntPipe,
@@ -13,6 +16,7 @@ import {
   Query,
   Req,
   Request,
+  Response,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -20,12 +24,7 @@ import {
 } from '@nestjs/common';
 import xlsx from 'node-xlsx';
 import { InjectModel } from '@nestjs/sequelize';
-import {
-  FormLayoutStateEnum,
-  FormStateEnum,
-  HypeForm,
-  HypeFormField,
-} from '../../entity';
+import { FormLayoutStateEnum, HypeForm, HypeFormField } from '../../entity';
 import { FormService } from '../providers/form.service';
 import { FormRecordService } from '../providers/form-record.service';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
@@ -45,7 +44,10 @@ import {
   FormRecordEnvEnum,
   FormRecordStateEnum,
 } from '../../entity/HypeBaseForm';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { BlobStorageService } from '../../blob-storage/blob-storage.service';
 
+@ApiTags('Form - Record')
 @Controller('forms')
 export class FormRecordController {
   constructor(
@@ -53,42 +55,21 @@ export class FormRecordController {
     private formModel: typeof HypeForm,
     private formService: FormService,
     private formRecordService: FormRecordService,
+    private blobService: BlobStorageService,
     private tagsService: TagsService,
   ) {}
 
   @UseGuards(HypeAnonymousAuthGuard)
   @Get(':fid/records')
+  @ApiBearerAuth()
   async getRecordList(
     @Req() req: HypeRequest,
     @Param('fid') formId: string,
     @Query()
     query: FormRecordListQuery,
   ) {
-    // if formId letter 0 is letter then it is a slug
-    const firstLetter = formId[0];
     let form: HypeForm;
-    if (/[a-zA-Z]/.test(firstLetter)) {
-      form = await this.formService.getFormOnly({
-        slug: formId,
-        state: FormStateEnum.ACTIVE,
-      });
-    } else {
-      form = await this.formService.getFormOnly({
-        id: parseInt(formId),
-        state: FormStateEnum.ACTIVE,
-      });
-    }
-
-    const granted = await this.formRecordService.validatePermissionGranted(
-      form.id,
-      null,
-      req.user,
-      'read',
-    );
-    if (!granted) {
-      throw new BadRequestException('You do not have permission to access.');
-    }
-
+    form = await this.formRecordService.formGrant(formId, null, req.user);
     if (query.includeForm) {
       form = await this.formService.getForm({
         id: form.id,
@@ -168,11 +149,42 @@ export class FormRecordController {
       ...data,
     };
   }
+
+  @Get(':formId/records/:id/files/:fileid')
   @UseGuards(HypeAnonymousAuthGuard)
-  @Delete(':fid/records/:id')
+  @ApiBearerAuth()
+  @Header('Cache-Control', 'max-age=3600')
+  async viewFile(
+    @Request() req,
+    @Response() res,
+    @Param('fileid') fileId: string,
+    @Param('fid') formId: string,
+    @Param('rid', ParseIntPipe) rid: number,
+  ) {
+    if (fileId == '' || fileId == 'undefined') {
+      throw new HttpException('id require', HttpStatus.BAD_REQUEST);
+    }
+    await this.formRecordService.formGrant(formId, rid, req.user);
+
+    const blobInfo = await this.blobService.getBlob({
+      id: parseInt(fileId),
+    });
+    if (blobInfo == null) {
+      throw new HttpException('File not found', HttpStatus.NOT_FOUND);
+    }
+    res.set({
+      'Content-Type': blobInfo.mimetype,
+      // 'Cache-Control': 'max-age=3600',
+    });
+    res.end(blobInfo.blob.bytes);
+    // return new StreamableFile(blobInfo.blobData.bytes);
+  }
+
+  @UseGuards(HypeAnonymousAuthGuard)
+  @Delete(':formId/records/:id')
   async deleteRecord(
     @Request() req: HypeRequest,
-    @Param('fid') formId: number,
+    @Param('formId') formId: number,
     @Param('id') id: number,
   ) {
     const granted = await this.formRecordService.validatePermissionGranted(

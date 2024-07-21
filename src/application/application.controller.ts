@@ -18,7 +18,9 @@ import { Permissions } from '../auth/permission.decorator';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { TagsService } from '../form/providers/tags.service';
+import { ApiExcludeController } from '@nestjs/swagger';
 
+@ApiExcludeController()
 @Controller('applications')
 export class ApplicationController {
   constructor(

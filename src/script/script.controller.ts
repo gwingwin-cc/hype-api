@@ -22,7 +22,9 @@ import { HypeScript, HypeScriptPermissions, User } from '../entity';
 import { HypeAuthGuard } from '../hype-auth.guard';
 import { HypeRequest } from '../interfaces/request';
 import { UpdaterFormPermissionDto } from '../form/dto/form.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Script')
 @Controller('scripts')
 @UseGuards(HypeAuthGuard, PermissionGuard)
 export class ScriptController {
