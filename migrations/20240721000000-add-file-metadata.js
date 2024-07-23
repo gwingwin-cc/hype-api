@@ -4,7 +4,7 @@ module.exports = {
   async up(queryInterface) {
     await queryInterface.sequelize.query(`
       alter table hype_blob_info
-        add storage_type VARCHAR(30) null comment 's3, hype, fs' after id;
+        add storage_type VARCHAR(30) null comment 's3, hype_db, fs' after id;
     `);
 
     await queryInterface.sequelize.query(`
