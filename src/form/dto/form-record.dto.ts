@@ -14,6 +14,7 @@ export class CreateFormRecordDto {
 }
 export class UpdateFormRecordRequest {
   data: any;
+  deleteFiles: any;
   recordState: FormRecordStateType;
 }
 export class FormRecordDto {}

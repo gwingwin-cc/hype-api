@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   HttpException,
   HttpStatus,
@@ -150,36 +149,6 @@ export class FormRecordController {
     };
   }
 
-  @Get(':formId/records/:id/files/:fileid')
-  @UseGuards(HypeAnonymousAuthGuard)
-  @ApiBearerAuth()
-  @Header('Cache-Control', 'max-age=3600')
-  async viewFile(
-    @Request() req,
-    @Response() res,
-    @Param('fileid') fileId: string,
-    @Param('fid') formId: string,
-    @Param('rid', ParseIntPipe) rid: number,
-  ) {
-    if (fileId == '' || fileId == 'undefined') {
-      throw new HttpException('id require', HttpStatus.BAD_REQUEST);
-    }
-    await this.formRecordService.formGrant(formId, rid, req.user);
-
-    const blobInfo = await this.blobService.getBlob({
-      id: parseInt(fileId),
-    });
-    if (blobInfo == null) {
-      throw new HttpException('File not found', HttpStatus.NOT_FOUND);
-    }
-    res.set({
-      'Content-Type': blobInfo.mimetype,
-      // 'Cache-Control': 'max-age=3600',
-    });
-    res.end(blobInfo.blob.bytes);
-    // return new StreamableFile(blobInfo.blobData.bytes);
-  }
-
   @UseGuards(HypeAnonymousAuthGuard)
   @Delete(':formId/records/:id')
   async deleteRecord(
@@ -211,6 +180,17 @@ export class FormRecordController {
     @Body()
     body: UpdateFormRecordRequest,
   ): Promise<void> {
+    const form = await this.formModel.findOne({
+      where: {
+        id: formId,
+      },
+      include: [HypeFormField],
+    });
+
+    if (form == null) {
+      throw new BadRequestException('Form not found.');
+    }
+
     const granted = await this.formRecordService.validatePermissionGranted(
       formId,
       recordId,
@@ -229,6 +209,129 @@ export class FormRecordController {
       recordId,
       body.data,
       body.recordState,
+    );
+
+    if (body.deleteFiles != null) {
+      Logger.log('Delete Files', 'Update Record');
+      Logger.log(body.deleteFiles, 'Update Record');
+      const latestData = await this.formRecordService.findOneById(
+        form.slug,
+        recordId,
+      );
+      let temp = [];
+      const deleteKeys = Object.keys(body.deleteFiles);
+      for (const fieldName of deleteKeys) {
+        if (latestData[fieldName] != null) {
+          temp = latestData[fieldName];
+        }
+        for (const blobInfoId of body.deleteFiles[fieldName]) {
+          temp = temp.filter((b) => b.id != blobInfoId);
+        }
+        latestData[fieldName] = temp;
+      }
+      await this.formRecordService.updateRecord(
+        user,
+        formId,
+        recordId,
+        latestData,
+        latestData.recordState,
+      );
+    }
+  }
+
+  @Get(':formId/records/:rid/files/:fileid')
+  @UseGuards(HypeAnonymousAuthGuard)
+  @ApiBearerAuth()
+  async viewFile(
+    @Request() req,
+    @Response() res,
+    @Param('fileid') fileId: string,
+    @Param('formId', ParseIntPipe) formId: number,
+    @Param('rid', ParseIntPipe) rid: number,
+  ) {
+    if (fileId == '' || fileId == 'undefined') {
+      throw new HttpException('id require', HttpStatus.BAD_REQUEST);
+    }
+    await this.formRecordService.validatePermissionGranted(
+      formId,
+      rid,
+      req.user,
+      'read',
+    );
+
+    const blobInfo = await this.blobService.getBlob({
+      id: parseInt(fileId),
+    });
+    if (blobInfo == null) {
+      throw new HttpException('File not found', HttpStatus.NOT_FOUND);
+    }
+    res.set({
+      'Content-Type': blobInfo.mimetype,
+      // 'Cache-Control': 'max-age=3600',
+    });
+    res.end(blobInfo.blob.bytes);
+    // return new StreamableFile(blobInfo.blobData.bytes);
+  }
+
+  @UseGuards(HypeAnonymousAuthGuard)
+  @Patch(':fid/records/:id/files')
+  @UseInterceptors(AnyFilesInterceptor())
+  @HttpCode(204)
+  async updateFileToRecord(
+    @Request() req: HypeRequest,
+    @Param('fid', ParseIntPipe) formId: number,
+    @Param('id', ParseIntPipe) recordId: number,
+    @Body('fieldName') fieldName: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<void> {
+    const form = await this.formModel.findOne({
+      where: {
+        id: formId,
+      },
+      include: [HypeFormField],
+    });
+
+    if (form == null) {
+      throw new BadRequestException('Form not found.');
+    }
+
+    const granted = await this.formRecordService.validatePermissionGranted(
+      form.id,
+      recordId,
+      req.user,
+      'update',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to updateRecord.',
+      );
+    }
+    const user = req.user;
+    const latestData = await this.formRecordService.findOneById(
+      form.slug,
+      recordId,
+    );
+    let temp = [];
+    if (latestData[fieldName] != null) {
+      temp = latestData[fieldName];
+    }
+    for (const f of files) {
+      const blobInfo = await this.formRecordService.saveBlob(req.user, f);
+      temp.push({
+        id: blobInfo.id,
+        name: blobInfo.filename,
+        size: blobInfo.size,
+        mimetype: blobInfo.mimetype,
+        createdAt: blobInfo.createdAt,
+        storeType: 'blob',
+      });
+    }
+    await this.formRecordService.updateRecord(
+      user,
+      formId,
+      recordId,
+      { [fieldName]: temp },
+      latestData.recordState,
     );
   }
 
@@ -311,21 +414,6 @@ export class FormRecordController {
       savedData.push(created);
     }
     return savedData;
-  }
-
-  @Post('upload')
-  @UseInterceptors(AnyFilesInterceptor())
-  async uploadBlob(
-    @Request() req: HypeRequest,
-    @UploadedFiles() files: Array<Express.Multer.File>,
-  ) {
-    const user = req.user;
-    const blobIds = [];
-    for (const f of files) {
-      const resultRec = await this.formRecordService.saveBlob(user, f);
-      blobIds.push(resultRec);
-    }
-    return blobIds;
   }
 
   @Get('get-tags-list')

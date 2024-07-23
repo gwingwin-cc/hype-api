@@ -30,17 +30,34 @@ export class BlobStorageService {
     });
   }
 
-  async createBlob(byUser: User, file: Express.Multer.File) {
-    const blob = await this.blobModel.create({
-      bytes: file.buffer,
-    });
+  async createBlob(
+    byUser: User,
+    file: Express.Multer.File,
+    storageType: string = 'hype_db',
+  ) {
+    let blobId: number;
+    let meta: string;
+    switch (storageType) {
+      case 'hype_db':
+        const blob = await this.blobModel.create({
+          bytes: file.buffer,
+        });
+        meta = blob.id.toString();
+        blobId = blob.id;
+        break;
+      default:
+        throw new Error('Invalid storage type');
+    }
+
     return this.blobInfoModel.create({
       filename: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
+      storageType: storageType,
       createdBy: byUser.id,
       createdAt: new Date(),
-      blobId: blob.id,
+      meta: meta,
+      blobId: blobId,
     });
   }
 }

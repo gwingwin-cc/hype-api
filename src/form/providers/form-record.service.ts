@@ -376,37 +376,6 @@ export class FormRecordService {
       );
     }
 
-    // const approval = await this.getRecordApproval(form.id, dataId);
-
-    // if (approval != null && approval.status !== 'APPROVED') {
-    //     const requestList = approval.approveRequests.filter(
-    //         (rq) => rq.signStatus == null,
-    //     );
-    //     if (requestList.length > 0 && requestList[0].type == 'AUDIT') {
-    //         if (user.id != requestList[0].requestUserId) {
-    //             throw new Error(
-    //                 'This document is in process and this user not has audit permission.',
-    //             );
-    //         }
-    //     } else {
-    //         throw new Error('This document is in process.');
-    //     }
-    // }
-
-    // if (data['createdAt'] != null) {
-    //   if (data['createdAt'].indexOf('Z') > -1) {
-    //     data['createdAt'] = data['createdAt'].slice(0, -1);
-    //   }
-    // } else {
-    //   delete data['createdAt'];
-    // }
-    // if (data['deletedAt'] != null) {
-    //   if (data['deletedAt'].indexOf('Z') > -1) {
-    //     data['deletedAt'] = data['deletedAt'].slice(0, -1);
-    //   }
-    // } else {
-    // }
-
     delete data['createdAt'];
     delete data['deletedAt'];
 
