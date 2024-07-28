@@ -17,6 +17,7 @@ export class UpdateFormRecordRequest {
   deleteFiles: any;
   recordState: FormRecordStateType;
 }
+
 export class FormRecordDto {}
 
 export class FormRecordListQuery {

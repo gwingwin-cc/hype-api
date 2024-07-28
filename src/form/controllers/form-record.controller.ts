@@ -170,76 +170,7 @@ export class FormRecordController {
     await this.formRecordService.deleteRecord(user, formId, id);
   }
 
-  @UseGuards(HypeAnonymousAuthGuard)
-  @Patch(':fid/records/:id')
-  @HttpCode(204)
-  async updateRecord(
-    @Request() req: HypeRequest,
-    @Param('fid', ParseIntPipe) formId: number,
-    @Param('id', ParseIntPipe) recordId: number,
-    @Body()
-    body: UpdateFormRecordRequest,
-  ): Promise<void> {
-    const form = await this.formModel.findOne({
-      where: {
-        id: formId,
-      },
-      include: [HypeFormField],
-    });
-
-    if (form == null) {
-      throw new BadRequestException('Form not found.');
-    }
-
-    const granted = await this.formRecordService.validatePermissionGranted(
-      formId,
-      recordId,
-      req.user,
-      'update',
-    );
-    if (!granted) {
-      throw new BadRequestException(
-        'You do not have permission to updateRecord.',
-      );
-    }
-    const user = req.user;
-    await this.formRecordService.updateRecord(
-      user,
-      formId,
-      recordId,
-      body.data,
-      body.recordState,
-    );
-
-    if (body.deleteFiles != null) {
-      Logger.log('Delete Files', 'Update Record');
-      Logger.log(body.deleteFiles, 'Update Record');
-      const latestData = await this.formRecordService.findOneById(
-        form.slug,
-        recordId,
-      );
-      let temp = [];
-      const deleteKeys = Object.keys(body.deleteFiles);
-      for (const fieldName of deleteKeys) {
-        if (latestData[fieldName] != null) {
-          temp = latestData[fieldName];
-        }
-        for (const blobInfoId of body.deleteFiles[fieldName]) {
-          temp = temp.filter((b) => b.id != blobInfoId);
-        }
-        latestData[fieldName] = temp;
-      }
-      await this.formRecordService.updateRecord(
-        user,
-        formId,
-        recordId,
-        latestData,
-        latestData.recordState,
-      );
-    }
-  }
-
-  @Get(':formId/records/:rid/files/:fileid')
+  @Get(':formId/records/:rid/files/:field')
   @UseGuards(HypeAnonymousAuthGuard)
   @ApiBearerAuth()
   async viewFile(
@@ -333,6 +264,76 @@ export class FormRecordController {
       { [fieldName]: temp },
       latestData.recordState,
     );
+  }
+
+  @UseGuards(HypeAnonymousAuthGuard)
+  @Patch(':fid/records/:id')
+  @HttpCode(204)
+  async updateRecord(
+    @Request() req: HypeRequest,
+    @Param('fid', ParseIntPipe) formId: number,
+    @Param('id', ParseIntPipe) recordId: number,
+    @Body()
+    body: UpdateFormRecordRequest,
+  ): Promise<void> {
+    const form = await this.formModel.findOne({
+      where: {
+        id: formId,
+      },
+      include: [HypeFormField],
+    });
+
+    if (form == null) {
+      throw new BadRequestException('Form not found.');
+    }
+
+    const granted = await this.formRecordService.validatePermissionGranted(
+      formId,
+      recordId,
+      req.user,
+      'update',
+    );
+    if (!granted) {
+      throw new BadRequestException(
+        'You do not have permission to updateRecord.',
+      );
+    }
+    const user = req.user;
+
+    await this.formRecordService.updateRecord(
+      user,
+      formId,
+      recordId,
+      body.data,
+      body.recordState,
+    );
+
+    if (body.deleteFiles != null) {
+      Logger.log('Delete Files', 'Update Record');
+      Logger.log(body.deleteFiles, 'Update Record');
+      const latestData = await this.formRecordService.findOneById(
+        form.slug,
+        recordId,
+      );
+      let temp = [];
+      const deleteKeys = Object.keys(body.deleteFiles);
+      for (const fieldName of deleteKeys) {
+        if (latestData[fieldName] != null) {
+          temp = latestData[fieldName];
+        }
+        for (const blobInfoId of body.deleteFiles[fieldName]) {
+          temp = temp.filter((b) => b.id != blobInfoId);
+        }
+        latestData[fieldName] = temp;
+      }
+      await this.formRecordService.updateRecord(
+        user,
+        formId,
+        recordId,
+        latestData,
+        latestData.recordState,
+      );
+    }
   }
 
   @UseGuards(HypeAnonymousAuthGuard)

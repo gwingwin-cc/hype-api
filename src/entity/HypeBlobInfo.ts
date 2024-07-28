@@ -32,16 +32,6 @@ export class HypeBlobInfo extends Model {
   @Column(DataType.STRING)
   mimetype: string;
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-    field: 'storage_type',
-  })
-  storageType: string;
-
-  @Column(DataType.STRING)
-  meta: string;
-
   @ForeignKey(() => HypeBlobStorage)
   @Column
   blobId: number;
