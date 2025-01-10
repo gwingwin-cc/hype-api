@@ -25,7 +25,7 @@ import {
 } from '../../entity';
 import { Attributes, FindOptions } from 'sequelize/types/model';
 import { TagsService } from '../providers/tags.service';
-import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeAuthGuard } from '../../auth/guard/hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
 import { Op } from 'sequelize';
 import {

@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { FormService } from '../providers/form.service';
 import { HypeRequest } from '../../interfaces/request';
-import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
+import { HypeAnonymousAuthGuard } from '../../auth/guard/hype-anonymous-auth.guard';
 import { FormLayoutStateType } from '../../entity';
 import { FormRecordStateEnum } from '../../entity/HypeBaseForm';
 import { ApiTags } from '@nestjs/swagger';

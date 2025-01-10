@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { jwtConstants } from './constants';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { LocalStrategy } from './local.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
 import { UserModule } from '../user/user.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { AuthController } from './auth.controller';
+import { HypeAuthGuard } from './guard/hype-auth.guard';
+import { HypeAnonymousAuthGuard } from './guard/hype-anonymous-auth.guard';
 
 @Module({
   imports: [
@@ -20,7 +22,13 @@ import { AuthController } from './auth.controller';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
+    HypeAuthGuard,
+    HypeAnonymousAuthGuard,
+  ],
+  exports: [AuthService, HypeAuthGuard, HypeAnonymousAuthGuard],
 })
 export class AuthModule {}

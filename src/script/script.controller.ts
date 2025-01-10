@@ -19,7 +19,7 @@ import { PermissionGuard } from '../auth/guard/permission.guard';
 import { ScriptService } from './script.service';
 import { InjectModel } from '@nestjs/sequelize';
 import { HypeScript, HypeScriptPermissions, User } from '../entity';
-import { HypeAuthGuard } from '../hype-auth.guard';
+import { HypeAuthGuard } from '../auth/guard/hype-auth.guard';
 import { HypeRequest } from '../interfaces/request';
 import { UpdaterFormPermissionDto } from '../form/dto/form.dto';
 import { ApiTags } from '@nestjs/swagger';

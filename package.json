@@ -50,6 +50,7 @@
     "nestjs-knex": "^2.0.0",
     "node-xlsx": "^0.21.0",
     "passport": "^0.6.0",
+    "passport-custom": "^1.1.1",
     "passport-http": "^0.3.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",

@@ -37,8 +37,8 @@ import {
   UpdateFormRecordRequest,
 } from '../dto/form-record.dto';
 import { HypeRequest } from '../../interfaces/request';
-import { HypeAuthGuard } from '../../hype-auth.guard';
-import { HypeAnonymousAuthGuard } from '../../hype-anonymous-auth.guard';
+import { HypeAuthGuard } from '../../auth/guard/hype-auth.guard';
+import { HypeAnonymousAuthGuard } from '../../auth/guard/hype-anonymous-auth.guard';
 import {
   FormRecordEnvEnum,
   FormRecordStateEnum,

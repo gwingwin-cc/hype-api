@@ -7,7 +7,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Knex, knex } from 'knex';
-import { Express } from 'express';
 import { Sequelize } from 'sequelize-typescript';
 import { InjectModel } from '@nestjs/sequelize';
 import {
@@ -136,12 +135,12 @@ export class FormRecordService {
     const tempRequiredPermissions = ['administrator', 'form_management'];
     const hasAdminPermission = await this.sequelize.query(
       `SELECT ur.userId, ps.slug
-             FROM hype_permissions ps
-                      INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
-                      INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
-             WHERE slug IN (:requiredPermissions)
-               AND userId = ${userId}
-            `,
+         FROM hype_permissions ps
+                INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id
+                INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId
+         WHERE slug IN (:requiredPermissions)
+           AND userId = ${userId}
+        `,
       {
         replacements: { requiredPermissions: tempRequiredPermissions },
         type: QueryTypes.SELECT,
@@ -153,16 +152,16 @@ export class FormRecordService {
 
     const hasPermission = await this.sequelize.query(
       `
-                SELECT ur.userId, ps.slug
-                FROM hype_permissions ps
-                         INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id AND rp.deletedAt IS null
-                         INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId AND ur.deletedAt IS NULL
-                         INNER JOIN hype_form_permissions fp
-                                    ON fp.permissionId = rp.permissionId AND fp.deletedAt IS NULL
-                WHERE fp.formId = ${formId}
-                  AND userId
-                    = ${userId}
-            `,
+          SELECT ur.userId, ps.slug
+          FROM hype_permissions ps
+                 INNER JOIN hype_role_permissions rp ON rp.permissionId = ps.id AND rp.deletedAt IS null
+                 INNER JOIN hype_user_roles ur ON ur.roleId = rp.roleId AND ur.deletedAt IS NULL
+                 INNER JOIN hype_form_permissions fp
+                            ON fp.permissionId = rp.permissionId AND fp.deletedAt IS NULL
+          WHERE fp.formId = ${formId}
+            AND userId
+            = ${userId}
+        `,
       {
         type: QueryTypes.SELECT,
       },
@@ -383,8 +382,15 @@ export class FormRecordService {
       (c) => c.fieldType == 'DATETIME' || c.fieldType == 'DATE',
     );
     for (const col of datetimeCol) {
-      if (data[col.slug] != null && data[col.slug].indexOf('Z') > -1) {
-        data[col.slug] = data[col.slug].slice(0, -1);
+      // Logger.log('data[col.slug]', `${col.slug}: ${data[col.slug]}`);
+      if (data[col.slug] != null) {
+        // if data is string and contain Z remove Z
+        if (
+          typeof data[col.slug] == 'string' &&
+          data[col.slug].indexOf('Z') > -1
+        ) {
+          data[col.slug] = data[col.slug].slice(0, -1);
+        }
       }
     }
 
@@ -578,9 +584,9 @@ export class FormRecordService {
     rawScript = rawScript.replace(/({)([A-Za-z0-9_]{0,300})(})/g, '');
 
     const countScript = `SELECT COUNT(*) as c
-                             FROM (${rawScript}) as script_sql`;
+                         FROM (${rawScript}) as script_sql`;
     let dataScript = `SELECT *
-                          FROM (${rawScript}) as script_sql`;
+                      FROM (${rawScript}) as script_sql`;
     if (body.perPage != null && body.page != null) {
       dataScript += ` LIMIT ${body.perPage} OFFSET ${
         (body.page - 1) * body.perPage
@@ -627,7 +633,7 @@ export class FormRecordService {
     rawScript = rawScript.replace(/({)([A-Za-z0-9_]{0,300})(})/g, '');
 
     const dataScript = `SELECT *
-                            FROM (${rawScript}) as script_sql`;
+                        FROM (${rawScript}) as script_sql`;
     Logger.log(rawScript, 'exportExcelScriptDatalist');
     try {
       const resultDataQuery = await this.sequelize.query(dataScript, {

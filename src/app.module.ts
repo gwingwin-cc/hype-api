@@ -14,8 +14,8 @@ import { BlobStorageModule } from './blob-storage/blob-storage.module';
 import * as dotenv from 'dotenv';
 import { KnexModule } from 'nestjs-knex';
 import { Op } from 'sequelize';
-import { HypeAuthGuard } from './hype-auth.guard';
-import { HypeAnonymousAuthGuard } from './hype-anonymous-auth.guard';
+import { HypeAnonymousAuthGuard } from './auth/guard/hype-anonymous-auth.guard';
+import { HypeAuthGuard } from './auth/guard/hype-auth.guard';
 dotenv.config();
 
 @Module({
@@ -78,6 +78,6 @@ dotenv.config();
     BlobStorageModule,
   ],
   controllers: [AppController],
-  providers: [HypeAuthGuard, HypeAnonymousAuthGuard],
+  providers: [],
 })
 export class AppModule {}

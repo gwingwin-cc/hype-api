@@ -11,7 +11,7 @@ import {
 import { FormService } from '../providers/form.service';
 import { Permissions } from '../../auth/permission.decorator';
 import { PermissionGuard } from '../../auth/guard/permission.guard';
-import { HypeAuthGuard } from '../../hype-auth.guard';
+import { HypeAuthGuard } from '../../auth/guard/hype-auth.guard';
 import { HypeRequest } from '../../interfaces/request';
 import { UpdateFormLayoutRequest } from '../dto/form.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
